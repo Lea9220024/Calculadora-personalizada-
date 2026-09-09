@@ -1,0 +1,6 @@
+{
+  "name": "Control de Gastos Mensuales",
+  "description": "Aplicación personal para la gestión, seguimiento y análisis de gastos e ingresos mensuales con presupuestos y estadísticas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
