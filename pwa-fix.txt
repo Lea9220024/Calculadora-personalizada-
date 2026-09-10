@@ -1,1 +1,0 @@
-PWA installability fix in progress: raster icon fallback will be added via Git blob.
