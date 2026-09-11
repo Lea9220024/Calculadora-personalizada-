@@ -30,20 +30,12 @@ export const DEFAULT_CATEGORIES: Category[] = [
     name: 'Servicios (Luz, Agua, Internet)',
     icon: 'Zap',
     color: 'bg-yellow-500',
-    textColor: 'text-yellow-500',
-    type: 'expense'
-  },
-  {
-    id: 'entretenimiento',
-    name: 'Ocio y Salidas',
-    icon: 'Film',
-    color: 'bg-rose-500',
-    textColor: 'text-rose-400',
+    textColor: 'text-yellow-400',
     type: 'expense'
   },
   {
     id: 'salud',
-    name: 'Salud y Farmacia',
+    name: 'Salud',
     icon: 'HeartPulse',
     color: 'bg-red-500',
     textColor: 'text-red-400',
@@ -51,177 +43,76 @@ export const DEFAULT_CATEGORIES: Category[] = [
   },
   {
     id: 'suscripciones',
-    name: 'Suscripciones y Software',
-    icon: 'CreditCard',
-    color: 'bg-amber-600',
-    textColor: 'text-amber-400',
+    name: 'Suscripciones',
+    icon: 'PlayCircle',
+    color: 'bg-violet-500',
+    textColor: 'text-violet-400',
+    type: 'expense'
+  },
+  {
+    id: 'entretenimiento',
+    name: 'Entretenimiento',
+    icon: 'Gamepad2',
+    color: 'bg-fuchsia-500',
+    textColor: 'text-fuchsia-400',
     type: 'expense'
   },
   {
     id: 'compras',
-    name: 'Ropa y Compras',
-    icon: 'Tag',
-    color: 'bg-rose-600',
-    textColor: 'text-rose-500',
+    name: 'Compras',
+    icon: 'ShoppingCart',
+    color: 'bg-pink-500',
+    textColor: 'text-pink-400',
     type: 'expense'
   },
   {
     id: 'educacion',
-    name: 'Educación y Cursos',
-    icon: 'GraduationCap',
-    color: 'bg-yellow-600',
-    textColor: 'text-yellow-400',
+    name: 'Educación',
+    icon: 'BookOpen',
+    color: 'bg-blue-500',
+    textColor: 'text-blue-400',
     type: 'expense'
   },
   {
-    id: 'otros_gastos',
-    name: 'Otros Gastos',
+    id: 'otros',
+    name: 'Otros gastos',
     icon: 'MoreHorizontal',
-    color: 'bg-zinc-600',
+    color: 'bg-zinc-500',
     textColor: 'text-zinc-400',
     type: 'expense'
   },
   {
     id: 'sueldo',
-    name: 'Sueldo / Salario',
-    icon: 'Briefcase',
-    color: 'bg-orange-500',
-    textColor: 'text-orange-400',
-    type: 'income'
-  },
-  {
-    id: 'ventas',
-    name: 'Ventas / Freelance',
-    icon: 'TrendingUp',
-    color: 'bg-amber-500',
-    textColor: 'text-amber-400',
+    name: 'Sueldo',
+    icon: 'Banknote',
+    color: 'bg-emerald-500',
+    textColor: 'text-emerald-400',
     type: 'income'
   },
   {
     id: 'otros_ingresos',
-    name: 'Otros Ingresos',
-    icon: 'DollarSign',
-    color: 'bg-yellow-500',
-    textColor: 'text-yellow-400',
+    name: 'Otros ingresos',
+    icon: 'CircleDollarSign',
+    color: 'bg-green-500',
+    textColor: 'text-green-400',
     type: 'income'
   }
 ];
+
+// La aplicación comienza vacía: las categorías se mantienen, pero no se
+// cargan movimientos ni presupuestos ficticios. Los datos reales se crean
+// desde la interacción del usuario.
+export const INITIAL_TRANSACTIONS: Transaction[] = [];
+
+export const INITIAL_BUDGET: MonthlyBudget = {
+  monthKey: '',
+  totalTarget: 0,
+  categoryTargets: {}
+};
 
 export const DEFAULT_SETTINGS: AppSettings = {
   currencySymbol: '$',
   currencyCode: 'ARS',
   theme: 'dark',
   startDayOfMonth: 1
-};
-
-export const getInitialTransactions = (): Transaction[] => {
-  const currentMonthKey = '2026-08';
-  return [
-    {
-      id: 'tx-1',
-      title: 'Sueldo Mensual',
-      amount: 1250000.00,
-      type: 'income',
-      categoryId: 'sueldo',
-      date: `${currentMonthKey}-01`,
-      paymentMethod: 'transferencia',
-      notes: 'Depósito de nómina en Pesos Argentinos',
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'tx-2',
-      title: 'Alquiler del Departamento',
-      amount: 380000.00,
-      type: 'expense',
-      categoryId: 'vivienda',
-      date: `${currentMonthKey}-02`,
-      paymentMethod: 'transferencia',
-      isRecurring: true,
-      notes: 'Pago mensual alquiler',
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'tx-3',
-      title: 'Supermercado Semanal',
-      amount: 145000.00,
-      type: 'expense',
-      categoryId: 'comida',
-      date: `${currentMonthKey}-03`,
-      paymentMethod: 'tarjeta_debito',
-      notes: 'Compras de la semana',
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'tx-4',
-      title: 'Factura de Luz y Agua',
-      amount: 38500.00,
-      type: 'expense',
-      categoryId: 'servicios',
-      date: `${currentMonthKey}-04`,
-      paymentMethod: 'tarjeta_credito',
-      isRecurring: true,
-      notes: 'Servicios básicos',
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'tx-5',
-      title: 'Cena con Amigos',
-      amount: 28000.00,
-      type: 'expense',
-      categoryId: 'entretenimiento',
-      date: `${currentMonthKey}-05`,
-      paymentMethod: 'efectivo',
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'tx-6',
-      title: 'Suscripción Netflix & Spotify',
-      amount: 12500.00,
-      type: 'expense',
-      categoryId: 'suscripciones',
-      date: `${currentMonthKey}-06`,
-      paymentMethod: 'tarjeta_credito',
-      isRecurring: true,
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'tx-7',
-      title: 'Carga de Combustible (Nafta)',
-      amount: 35000.00,
-      type: 'expense',
-      categoryId: 'transporte',
-      date: `${currentMonthKey}-07`,
-      paymentMethod: 'tarjeta_debito',
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'tx-8',
-      title: 'Trabajo Freelance Diseño',
-      amount: 280000.00,
-      type: 'income',
-      categoryId: 'ventas',
-      date: `${currentMonthKey}-08`,
-      paymentMethod: 'transferencia',
-      notes: 'Proyecto logotipo cliente',
-      createdAt: new Date().toISOString()
-    }
-  ];
-};
-
-export const getInitialBudgets = (): MonthlyBudget[] => {
-  return [
-    {
-      monthKey: '2026-08',
-      totalTarget: 850000,
-      categoryTargets: {
-        vivienda: 400000,
-        comida: 220000,
-        servicios: 60000,
-        transporte: 70000,
-        entretenimiento: 50000,
-        suscripciones: 20000,
-        salud: 30000
-      }
-    }
-  ];
 };
