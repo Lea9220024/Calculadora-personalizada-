@@ -67,15 +67,27 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
 
-            {/* Mobile quick add button */}
-            <button
-              onClick={onOpenNewTransaction}
-              className="md:hidden flex items-center gap-1.5 px-3.5 py-2 bg-orange-500 hover:bg-orange-400 text-black font-extrabold text-xs rounded-xl transition-all shadow-md shadow-orange-950/40"
-              id="mobile-add-btn"
-            >
-              <Plus className="w-4 h-4 text-black" strokeWidth={2.5} />
-              <span>Nuevo</span>
-            </button>
+            {/* Mobile actions */}
+            <div className="flex items-center gap-2 md:hidden">
+              <button
+                onClick={onOpenSupabaseSync}
+                className="flex items-center justify-center w-9 h-9 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors border border-zinc-800"
+                title="Nube y respaldo Supabase"
+                aria-label="Nube y respaldo Supabase"
+                id="mobile-supabase-sync-btn"
+              >
+                <GradientIcon icon={Cloud} className="w-4 h-4" strokeWidth={2.2} />
+              </button>
+
+              <button
+                onClick={onOpenNewTransaction}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-orange-500 hover:bg-orange-400 text-black font-extrabold text-xs rounded-xl transition-all shadow-md shadow-orange-950/40"
+                id="mobile-add-btn"
+              >
+                <Plus className="w-4 h-4 text-black" strokeWidth={2.5} />
+                <span>Nuevo</span>
+              </button>
+            </div>
           </div>
 
           {/* Month Selector Navigation */}
@@ -213,7 +225,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={() => onTabChange('categories')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-              activeTab === 'categories'
+              activeTab === 'categories"
                 ? 'bg-zinc-900 text-orange-400 border border-orange-500/40 shadow-sm'
                 : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60'
             }`}
