@@ -30,6 +30,13 @@ const STORAGE_KEYS = {
   SETTINGS: 'mis_gastos_settings_v1'
 };
 
+const createTransactionId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `tx-${crypto.randomUUID()}`;
+  }
+  return `tx-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
 export default function App() {
   const [currentMonthKey, setCurrentMonthKey] = useState<string>(getCurrentMonthKey());
   const [activeTab, setActiveTab] = useState<ViewTab>('dashboard');
@@ -120,7 +127,7 @@ export default function App() {
     } else {
       const newTx: Transaction = {
         ...txData,
-        id: `tx-${Date.now()}`,
+        id: createTransactionId(),
         createdAt: new Date().toISOString()
       };
       setTransactions(prev => [newTx, ...prev]);
@@ -130,7 +137,7 @@ export default function App() {
   const handleDuplicateTransaction = (tx: Transaction) => {
     const duplicated: Transaction = {
       ...tx,
-      id: `tx-${Date.now()}`,
+      id: createTransactionId(),
       title: `${tx.title} (Copia)`,
       createdAt: new Date().toISOString()
     };
