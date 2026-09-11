@@ -1,9 +1,7 @@
 import { supabase } from './supabase';
 import { AppSettings, Category, MonthlyBudget, Transaction } from '../types';
-
 export interface MigrationPayload { transactions: Transaction[]; categories: Category[]; budgets: MonthlyBudget[]; settings: AppSettings; }
 export interface MigrationResult { categories: number; transactions: number; budgets: number; settings: number; }
-
 export async function migrateLocalDataToSupabase(userId: string, payload: MigrationPayload): Promise<MigrationResult> {
   if (!supabase) throw new Error('Supabase no está configurado.');
   const { error: categoryError } = await supabase.from('calculator_categories').upsert(payload.categories.map((category) => ({ id: category.id, user_id: userId, name: category.name, icon: category.icon, color: category.color, text_color: category.textColor, type: category.type })), { onConflict: 'id' });
