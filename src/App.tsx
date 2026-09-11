@@ -1,19 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  AppProps 
-} from 'react';
-import { 
-  Category, 
-  MonthlyBudget, 
-  Transaction, 
-  ViewTab, 
-  AppSettings 
+import {
+  Category,
+  MonthlyBudget,
+  Transaction,
+  ViewTab,
+  AppSettings
 } from './types';
-import { 
-  DEFAULT_CATEGORIES, 
-  DEFAULT_SETTINGS, 
-  getInitialBudgets, 
-  getInitialTransactions 
+import {
+  DEFAULT_CATEGORIES,
+  DEFAULT_SETTINGS,
+  INITIAL_BUDGET,
+  INITIAL_TRANSACTIONS
 } from './data/initialData';
 import { Header } from './components/Header';
 import { GlobalGradientDefs } from './components/GradientIcon';
@@ -34,11 +31,9 @@ const STORAGE_KEYS = {
 };
 
 export default function App() {
-  // Current month being viewed
   const [currentMonthKey, setCurrentMonthKey] = useState<string>(getCurrentMonthKey());
   const [activeTab, setActiveTab] = useState<ViewTab>('dashboard');
 
-  // Core Data state initialized from LocalStorage or Default Sample Data
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
@@ -46,7 +41,7 @@ export default function App() {
     } catch (e) {
       console.error(e);
     }
-    return getInitialTransactions();
+    return INITIAL_TRANSACTIONS;
   });
 
   const [categories, setCategories] = useState<Category[]>(() => {
@@ -66,7 +61,7 @@ export default function App() {
     } catch (e) {
       console.error(e);
     }
-    return getInitialBudgets();
+    return INITIAL_BUDGET.monthKey ? [INITIAL_BUDGET] : [];
   });
 
   const [settings, setSettings] = useState<AppSettings>(() => {
@@ -79,12 +74,10 @@ export default function App() {
     return DEFAULT_SETTINGS;
   });
 
-  // Modal States
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isExportImportOpen, setIsExportImportOpen] = useState(false);
 
-  // Sync to LocalStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
   }, [transactions]);
@@ -101,10 +94,8 @@ export default function App() {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
   }, [settings]);
 
-  // Filter transactions for currently selected month (YYYY-MM)
   const monthTransactions = transactions.filter(t => t.date.startsWith(currentMonthKey));
 
-  // Current month total income & expenses
   const monthIncome = monthTransactions
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -113,29 +104,20 @@ export default function App() {
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // Current month budget
   const currentBudget = budgets.find(b => b.monthKey === currentMonthKey) || {
     monthKey: currentMonthKey,
-    totalTarget: 1800,
-    categoryTargets: {
-      vivienda: 900,
-      comida: 450,
-      servicios: 120,
-      transporte: 150
-    }
+    totalTarget: 0,
+    categoryTargets: {}
   };
 
-  // Actions
   const handleSaveTransaction = (txData: Omit<Transaction, 'id' | 'createdAt'>) => {
     if (editingTransaction) {
-      // Update existing
       setTransactions(prev => prev.map(t => t.id === editingTransaction.id ? {
         ...t,
         ...txData
       } : t));
       setEditingTransaction(null);
     } else {
-      // Create new
       const newTx: Transaction = {
         ...txData,
         id: `tx-${Date.now()}`,
@@ -171,7 +153,6 @@ export default function App() {
     });
   };
 
-  // Category CRUD
   const handleAddCategory = (newCat: Omit<Category, 'id'>) => {
     const created: Category = {
       ...newCat,
@@ -190,7 +171,6 @@ export default function App() {
     }
   };
 
-  // Full Import / Reset
   const handleImportFullData = (imported: {
     transactions: Transaction[];
     categories: Category[];
@@ -202,17 +182,16 @@ export default function App() {
   };
 
   const handleResetSampleData = () => {
-    setTransactions(getInitialTransactions());
+    setTransactions(INITIAL_TRANSACTIONS);
     setCategories(DEFAULT_CATEGORIES);
-    setBudgets(getInitialBudgets());
+    setBudgets(INITIAL_BUDGET.monthKey ? [INITIAL_BUDGET] : []);
     setSettings(DEFAULT_SETTINGS);
   };
 
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans flex flex-col selection:bg-orange-500 selection:text-black">
       <GlobalGradientDefs />
-      
-      {/* App Top Header Navigation */}
+
       <Header
         currentMonthKey={currentMonthKey}
         onMonthChange={setCurrentMonthKey}
@@ -227,10 +206,7 @@ export default function App() {
         onCurrencyChange={(sym) => setSettings(s => ({ ...s, currencySymbol: sym }))}
       />
 
-      {/* Main App Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        
-        {/* Metric Cards - Visible on Dashboard & Transactions tab */}
         {(activeTab === 'dashboard' || activeTab === 'transactions') && (
           <SummaryCards
             totalIncome={monthIncome}
@@ -241,12 +217,9 @@ export default function App() {
           />
         )}
 
-        {/* Tab Views */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
-            {/* Split view: Transactions on Left, Charts on Right */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              
               <div className="lg:col-span-7 space-y-6">
                 <TransactionList
                   transactions={monthTransactions}
@@ -275,10 +248,8 @@ export default function App() {
                   onUpdateBudget={handleUpdateBudget}
                 />
               </div>
-
             </div>
 
-            {/* Analytics below */}
             <AnalyticsCharts
               transactions={monthTransactions}
               categories={categories}
@@ -332,10 +303,8 @@ export default function App() {
             onDeleteCategory={handleDeleteCategory}
           />
         )}
-
       </main>
 
-      {/* Footer */}
       <footer className="bg-zinc-950 border-t border-zinc-800 text-zinc-400 py-6 mt-12">
         <div className="max-w-7xl mx-auto px-4 text-center text-xs space-y-1">
           <p className="font-semibold text-zinc-300">
@@ -347,7 +316,6 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Add / Edit Transaction Modal */}
       <TransactionFormModal
         isOpen={isFormModalOpen}
         onClose={() => {
@@ -361,7 +329,6 @@ export default function App() {
         currencySymbol={settings.currencySymbol}
       />
 
-      {/* Backup & Export Modal */}
       <ExportImportModal
         isOpen={isExportImportOpen}
         onClose={() => setIsExportImportOpen(false)}
@@ -372,7 +339,6 @@ export default function App() {
         onImportFullData={handleImportFullData}
         onResetSampleData={handleResetSampleData}
       />
-
     </div>
   );
 }
