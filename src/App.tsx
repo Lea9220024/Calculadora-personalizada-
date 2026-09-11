@@ -21,6 +21,7 @@ import { AnalyticsCharts } from './components/AnalyticsCharts';
 import { CategoryManager } from './components/CategoryManager';
 import { TransactionFormModal } from './components/TransactionFormModal';
 import { ExportImportModal } from './components/ExportImportModal';
+import { SupabaseSyncModal } from './components/SupabaseSyncModal';
 import { getCurrentMonthKey } from './utils/formatters';
 
 const STORAGE_KEYS = {
@@ -31,8 +32,8 @@ const STORAGE_KEYS = {
 };
 
 const createTransactionId = () => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `tx-${crypto.randomUUID()}`;
+  if (typeof crypto !== 'undefined' && typeof crypto['randomUUID'] === 'function') {
+    return `tx-${crypto['randomUUID']()}`;
   }
   return `tx-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 };
@@ -84,6 +85,7 @@ export default function App() {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isExportImportOpen, setIsExportImportOpen] = useState(false);
+  const [isSupabaseSyncOpen, setIsSupabaseSyncOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
@@ -209,6 +211,7 @@ export default function App() {
           setIsFormModalOpen(true);
         }}
         onOpenExportImport={() => setIsExportImportOpen(true)}
+        onOpenSupabaseSync={() => setIsSupabaseSyncOpen(true)}
         currencySymbol={settings.currencySymbol}
         onCurrencyChange={(sym) => setSettings(s => ({ ...s, currencySymbol: sym }))}
       />
@@ -345,6 +348,15 @@ export default function App() {
         settings={settings}
         onImportFullData={handleImportFullData}
         onResetSampleData={handleResetSampleData}
+      />
+
+      <SupabaseSyncModal
+        isOpen={isSupabaseSyncOpen}
+        onClose={() => setIsSupabaseSyncOpen(false)}
+        transactions={transactions}
+        categories={categories}
+        budgets={budgets}
+        settings={settings}
       />
     </div>
   );

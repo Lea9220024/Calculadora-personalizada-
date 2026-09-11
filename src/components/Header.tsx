@@ -10,7 +10,8 @@ import {
   Target, 
   LayoutDashboard,
   Settings,
-  Calendar
+  Calendar,
+  Cloud
 } from 'lucide-react';
 import { GradientIcon } from './GradientIcon';
 import { ViewTab } from '../types';
@@ -23,6 +24,7 @@ interface HeaderProps {
   onTabChange: (tab: ViewTab) => void;
   onOpenNewTransaction: () => void;
   onOpenExportImport: () => void;
+  onOpenSupabaseSync: () => void;
   currencySymbol: string;
   onCurrencyChange: (symbol: string) => void;
 }
@@ -34,6 +36,7 @@ export const Header: React.FC<HeaderProps> = ({
   onTabChange,
   onOpenNewTransaction,
   onOpenExportImport,
+  onOpenSupabaseSync,
   currencySymbol,
   onCurrencyChange
 }) => {
@@ -120,6 +123,16 @@ export const Header: React.FC<HeaderProps> = ({
                 $ ARS (Peso Argentino)
               </span>
             </div>
+
+            {/* Supabase cloud */}
+            <button
+              onClick={onOpenSupabaseSync}
+              className="p-2 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors border border-zinc-800"
+              title="Nube y respaldo Supabase"
+              id="supabase-sync-btn"
+            >
+              <GradientIcon icon={Cloud} className="w-4 h-4" strokeWidth={2.2} />
+            </button>
 
             {/* Export/Import Backup */}
             <button
@@ -214,4 +227,3 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
-
