@@ -23,6 +23,8 @@ import { TransactionFormModal } from './components/TransactionFormModal';
 import { ExportImportModal } from './components/ExportImportModal';
 import { SupabaseSyncModal } from './components/SupabaseSyncModal';
 import { getCurrentMonthKey } from './utils/formatters';
+import { supabase } from './lib/supabase';
+import { readUserDataFromSupabase } from './lib/supabaseRead';
 
 const STORAGE_KEYS = {
   TRANSACTIONS: 'mis_gastos_transactions_v1',
@@ -102,6 +104,37 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
   }, [settings]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCloudData = async () => {
+      if (!supabase) return;
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user || cancelled) return;
+
+        const cloudData = await readUserDataFromSupabase(session.user.id);
+        if (cancelled) return;
+
+        // Supabase only becomes the active source after a complete successful read.
+        // localStorage remains the local fallback and backup.
+        setTransactions(cloudData.transactions);
+        setCategories(cloudData.categories);
+        setBudgets(cloudData.budgets);
+        if (cloudData.settings) setSettings(cloudData.settings);
+      } catch (error) {
+        console.warn('No se pudieron cargar los datos desde Supabase. Se mantiene la copia local.', error);
+      }
+    };
+
+    void loadCloudData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const monthTransactions = transactions.filter(t => t.date.startsWith(currentMonthKey));
 
