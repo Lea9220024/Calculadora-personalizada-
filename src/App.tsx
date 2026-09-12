@@ -19,6 +19,7 @@ import { TransactionList } from './components/TransactionList';
 import { BudgetOverview } from './components/BudgetOverview';
 import { FinancialIntelligence } from './components/FinancialIntelligence';
 import { AnalyticsCharts } from './components/AnalyticsCharts';
+import { HistoricalAnalysis } from './components/HistoricalAnalysis';
 import { CategoryManager } from './components/CategoryManager';
 import { TransactionFormModal } from './components/TransactionFormModal';
 import { ExportImportModal } from './components/ExportImportModal';
@@ -367,6 +368,11 @@ export default function App() {
               categories={categories}
               currencySymbol={settings.currencySymbol}
             />
+
+            <HistoricalAnalysis
+              transactions={transactions}
+              currencySymbol={settings.currencySymbol}
+            />
           </div>
         )}
 
@@ -410,11 +416,17 @@ export default function App() {
         )}
 
         {activeTab === 'analytics' && (
-          <AnalyticsCharts
-            transactions={monthTransactions}
-            categories={categories}
-            currencySymbol={settings.currencySymbol}
-          />
+          <>
+            <AnalyticsCharts
+              transactions={monthTransactions}
+              categories={categories}
+              currencySymbol={settings.currencySymbol}
+            />
+            <HistoricalAnalysis
+              transactions={transactions}
+              currencySymbol={settings.currencySymbol}
+            />
+          </>
         )}
 
         {activeTab === 'categories' && (
