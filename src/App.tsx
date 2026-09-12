@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Category, FinancialCard, InstallmentPlan, MonthlyBudget, Transaction, ViewTab, AppSettings } from './types';
+import { Category, FinancialCard, InstallmentPlan, MonthlyBudget, Subscription, Transaction, ViewTab, AppSettings } from './types';
 import { DEFAULT_CATEGORIES, DEFAULT_SETTINGS, INITIAL_BUDGET, INITIAL_TRANSACTIONS } from './data/initialData';
 import { Header } from './components/Header';
 import { GlobalGradientDefs } from './components/GradientIcon';
@@ -11,6 +11,7 @@ import { AnalyticsCharts } from './components/AnalyticsCharts';
 import { HistoricalAnalysis } from './components/HistoricalAnalysis';
 import { FinancialGoals } from './components/FinancialGoals';
 import { CardsAndInstallments } from './components/CardsAndInstallments';
+import { Subscriptions } from './components/Subscriptions';
 import { CategoryManager } from './components/CategoryManager';
 import { TransactionFormModal } from './components/TransactionFormModal';
 import { ExportImportModal } from './components/ExportImportModal';
@@ -23,7 +24,7 @@ import { readUserDataFromSupabase } from './lib/supabaseRead';
 import { subscribeToCalculatorRealtime, unsubscribeFromCalculatorRealtime } from './lib/supabaseRealtime';
 import { deleteCategoryFromSupabase, deleteTransactionFromSupabase, syncBudgetToSupabase, syncCategoryToSupabase, syncSettingsToSupabase, syncTransactionToSupabase } from './lib/supabaseWrite';
 
-const STORAGE_KEYS = { TRANSACTIONS: 'mis_gastos_transactions_v1', CATEGORIES: 'mis_gastos_categories_v1', BUDGETS: 'mis_gastos_budgets_v1', SETTINGS: 'mis_gastos_settings_v1', CARDS: 'cream_financial_cards_v1', INSTALLMENTS: 'cream_installment_plans_v1' };
+const STORAGE_KEYS = { TRANSACTIONS: 'mis_gastos_transactions_v1', CATEGORIES: 'mis_gastos_categories_v1', BUDGETS: 'mis_gastos_budgets_v1', SETTINGS: 'mis_gastos_settings_v1', CARDS: 'cream_financial_cards_v1', INSTALLMENTS: 'cream_installment_plans_v1', SUBSCRIPTIONS: 'cream_subscriptions_v1' };
 const createTransactionId = () => typeof crypto !== 'undefined' && typeof crypto['randomUUID'] === 'function' ? `tx-${crypto['randomUUID']}` : `tx-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 const createId = (prefix: string) => typeof crypto !== 'undefined' && typeof crypto['randomUUID'] === 'function' ? `${prefix}-${crypto['randomUUID']}` : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 const syncInBackground = (operation: () => Promise<void>, label: string) => { void operation().catch((error) => console.warn(`No se pudo sincronizar ${label} con Supabase. La copia local se mantiene.`, error)); };
@@ -37,6 +38,7 @@ export default function App() {
   const [settings, setSettings] = useState<AppSettings>(() => { try { const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS); if (saved) return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) }; } catch (e) { console.error(e); } return DEFAULT_SETTINGS; });
   const [cards, setCards] = useState<FinancialCard[]>(() => { try { const saved = localStorage.getItem(STORAGE_KEYS.CARDS); if (saved) return JSON.parse(saved); } catch (e) { console.error(e); } return []; });
   const [installmentPlans, setInstallmentPlans] = useState<InstallmentPlan[]>(() => { try { const saved = localStorage.getItem(STORAGE_KEYS.INSTALLMENTS); if (saved) return JSON.parse(saved); } catch (e) { console.error(e); } return []; });
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>(() => { try { const saved = localStorage.getItem(STORAGE_KEYS.SUBSCRIPTIONS); if (saved) return JSON.parse(saved); } catch (e) { console.error(e); } return []; });
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isExportImportOpen, setIsExportImportOpen] = useState(false);
@@ -49,6 +51,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings)); }, [settings]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.CARDS, JSON.stringify(cards)); }, [cards]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INSTALLMENTS, JSON.stringify(installmentPlans)); }, [installmentPlans]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.SUBSCRIPTIONS, JSON.stringify(subscriptions)); }, [subscriptions]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -106,6 +109,9 @@ export default function App() {
   const handleAddCard = (newCard: Omit<FinancialCard, 'id' | 'createdAt'>) => { const card: FinancialCard = { ...newCard, id: createId('card'), createdAt: new Date().toISOString() }; setCards(prev => [card, ...prev]); };
   const handleUpdateCard = (updated: FinancialCard) => setCards(prev => prev.map(c => c.id === updated.id ? updated : c));
   const handleDeleteCard = (id: string) => setCards(prev => prev.filter(c => c.id !== id));
+  const handleAddSubscription = (data: Omit<Subscription, 'id' | 'createdAt' | 'updatedAt'>) => { const now = new Date().toISOString(); const subscription: Subscription = { ...data, id: createId('subscription'), createdAt: now, updatedAt: now }; setSubscriptions(prev => [subscription, ...prev]); };
+  const handleUpdateSubscription = (updated: Subscription) => setSubscriptions(prev => prev.map(s => s.id === updated.id ? updated : s));
+  const handleDeleteSubscription = (id: string) => setSubscriptions(prev => prev.filter(s => s.id !== id));
   const handleCurrencyChange = (sym: string) => { const nextSettings = { ...settings, currencySymbol: sym }; setSettings(nextSettings); syncInBackground(() => syncSettingsToSupabase(nextSettings), 'la configuración'); };
   const handleThemeChange = (theme: AppSettings['theme']) => { const nextSettings = { ...settings, theme }; setSettings(nextSettings); syncInBackground(() => syncSettingsToSupabase(nextSettings), 'el tema visual'); };
   const handleImportFullData = (imported: { transactions: Transaction[]; categories: Category[]; budgets: MonthlyBudget[]; settings: AppSettings }) => { setTransactions(imported.transactions); setCategories(imported.categories); setBudgets(imported.budgets); setSettings({ ...DEFAULT_SETTINGS, ...imported.settings }); };
@@ -122,9 +128,10 @@ export default function App() {
       {activeTab === 'budgets' && <><FinancialIntelligence currentMonthKey={currentMonthKey} budgetTarget={currentBudget.totalTarget} transactions={monthTransactions} currencySymbol={settings.currencySymbol} /><div className="mt-6"><BudgetOverview currentMonthKey={currentMonthKey} monthlyBudget={currentBudget} transactions={monthTransactions} categories={categories} currencySymbol={settings.currencySymbol} onUpdateBudget={handleUpdateBudget} /></div></>}
       {activeTab === 'analytics' && <><AnalyticsCharts transactions={monthTransactions} categories={categories} currencySymbol={settings.currencySymbol} /><HistoricalAnalysis transactions={transactions} currencySymbol={settings.currencySymbol} /><div className="mt-6"><FinancialGoals transactions={transactions} currencySymbol={settings.currencySymbol} /></div></>}
       {activeTab === 'cards' && <CardsAndInstallments cards={cards} installmentPlans={installmentPlans} transactions={transactions} currentMonthKey={currentMonthKey} currencySymbol={settings.currencySymbol} onAddCard={handleAddCard} onUpdateCard={handleUpdateCard} onDeleteCard={handleDeleteCard} />}
+      {activeTab === 'subscriptions' && <Subscriptions subscriptions={subscriptions} categories={categories} cards={cards} transactions={transactions} currentMonthKey={currentMonthKey} currencySymbol={settings.currencySymbol} onAdd={handleAddSubscription} onUpdate={handleUpdateSubscription} onDelete={handleDeleteSubscription} />}
       {activeTab === 'categories' && <CategoryManager categories={categories} onAddCategory={handleAddCategory} onUpdateCategory={handleUpdateCategory} onDeleteCategory={handleDeleteCategory} />}
     </main>
-    <TransactionFormModal isOpen={isFormModalOpen} onClose={() => { setIsFormModalOpen(false); setEditingTransaction(null); }} onSave={handleSaveTransaction} initialData={editingTransaction} categories={categories} cards={cards} currentMonthKey={currentMonthKey} currencySymbol={settings.currencySymbol} />
+    <TransactionFormModal isOpen={isFormModalOpen} onClose={() => { setIsFormModalOpen(false); setEditingTransaction(null); }} onSave={handleSaveTransaction} editingTransaction={editingTransaction} categories={categories} cards={cards} currentMonthKey={currentMonthKey} currencySymbol={settings.currencySymbol} />
     <ExportImportModal isOpen={isExportImportOpen} onClose={() => setIsExportImportOpen(false)} transactions={transactions} categories={categories} budgets={budgets} settings={settings} onImportFullData={handleImportFullData} onResetSampleData={handleResetSampleData} onOpenSafeImport={() => { setIsExportImportOpen(false); setIsSafeImportOpen(true); }} />
     <SafeImportModal isOpen={isSafeImportOpen} onClose={() => setIsSafeImportOpen(false)} transactions={transactions} categories={categories} onImportTransactions={handleSafeImportTransactions} />
     <SupabaseSyncModal isOpen={isSupabaseSyncOpen} onClose={() => setIsSupabaseSyncOpen(false)} transactions={transactions} categories={categories} budgets={budgets} settings={settings} />
