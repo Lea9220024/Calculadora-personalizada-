@@ -43,9 +43,12 @@ export const HistoricalAnalysis: React.FC<HistoricalAnalysisProps> = ({ transact
   const categoryName = (id: string) => categories.find(c => c.id === id)?.name || id;
   const maxMonthlyValue = Math.max(1, ...monthly.flatMap(m => [m.income, m.expense]));
 
-  const nowKey = monthKey(new Date().toISOString());
-  const currentMonth = monthly.find(m => m.key === nowKey);
-  const historicalMonths = activeMonths.filter(m => m.key !== nowKey);
+  // 5.18: use the latest month with real movements as the comparison month.
+  // This keeps the analysis correct when historical data is loaded later and
+  // avoids depending on the device calendar date.
+  const currentMonth = activeMonths[activeMonths.length - 1];
+  const comparisonMonthKey = currentMonth?.key || '';
+  const historicalMonths = activeMonths.filter(m => m.key !== comparisonMonthKey);
   const historicalAvgExpense = historicalMonths.length ? historicalMonths.reduce((sum, m) => sum + m.expense, 0) / historicalMonths.length : 0;
   const historicalAvgIncome = historicalMonths.length ? historicalMonths.reduce((sum, m) => sum + m.income, 0) / historicalMonths.length : 0;
 
@@ -54,13 +57,13 @@ export const HistoricalAnalysis: React.FC<HistoricalAnalysisProps> = ({ transact
   const incomeDiff = currentMonth ? percentageDiff(currentMonth.income, historicalAvgIncome) : 0;
 
   const categoryCurrentTotals: Record<string, number> = {};
-  yearTransactions.filter(tx => tx.type === 'expense' && monthKey(tx.date) === nowKey).forEach(tx => {
+  yearTransactions.filter(tx => tx.type === 'expense' && monthKey(tx.date) === comparisonMonthKey).forEach(tx => {
     categoryCurrentTotals[tx.categoryId] = (categoryCurrentTotals[tx.categoryId] || 0) + tx.amount;
   });
 
-  const previousMonthDate = new Date();
-  previousMonthDate.setMonth(previousMonthDate.getMonth() - 1);
-  const previousKey = monthKey(previousMonthDate.toISOString());
+  const previousMonthDate = currentMonth ? new Date(`${currentMonth.key}-01T00:00:00`) : null;
+  if (previousMonthDate) previousMonthDate.setMonth(previousMonthDate.getMonth() - 1);
+  const previousKey = previousMonthDate ? monthKey(previousMonthDate.toISOString()) : '';
   const categoryPreviousTotals: Record<string, number> = {};
   yearTransactions.filter(tx => tx.type === 'expense' && monthKey(tx.date) === previousKey).forEach(tx => {
     categoryPreviousTotals[tx.categoryId] = (categoryPreviousTotals[tx.categoryId] || 0) + tx.amount;
