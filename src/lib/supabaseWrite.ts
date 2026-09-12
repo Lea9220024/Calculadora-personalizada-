@@ -1,5 +1,6 @@
 import { AppSettings, Category, MonthlyBudget, Transaction } from '../types';
 import { supabase } from './supabase';
+import { enqueuePendingSupabaseSync } from './supabaseSyncQueue';
 
 type SyncStatus = 'pending' | 'synced' | 'error';
 
@@ -16,7 +17,12 @@ async function getAuthenticatedUserId(): Promise<string | null> {
   return session?.user?.id ?? null;
 }
 
-async function withRetry<T>(operation: () => Promise<T>, label: string, attempts = 3): Promise<T> {
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  label: string,
+  attempts = 3,
+  onFinalError?: () => void,
+): Promise<T> {
   notifySyncStatus('pending', label);
   let lastError: unknown;
 
@@ -32,6 +38,7 @@ async function withRetry<T>(operation: () => Promise<T>, label: string, attempts
   }
 
   notifySyncStatus('error', label);
+  onFinalError?.();
   throw lastError instanceof Error ? lastError : new Error(`No se pudo sincronizar ${label}.`);
 }
 
@@ -55,7 +62,7 @@ export async function syncTransactionToSupabase(transaction: Transaction): Promi
     }, { onConflict: 'id' });
 
     if (error) throw new Error(`Movimiento: ${error.message}`);
-  }, 'el movimiento');
+  }, 'el movimiento', 3, () => enqueuePendingSupabaseSync({ type: 'upsert_transaction', payload: transaction }));
 }
 
 export async function deleteTransactionFromSupabase(id: string): Promise<void> {
@@ -70,7 +77,7 @@ export async function deleteTransactionFromSupabase(id: string): Promise<void> {
       .eq('user_id', userId);
 
     if (error) throw new Error(`Movimiento: ${error.message}`);
-  }, 'la eliminación del movimiento');
+  }, 'la eliminación del movimiento', 3, () => enqueuePendingSupabaseSync({ type: 'delete_transaction', payload: { id } }));
 }
 
 export async function syncBudgetToSupabase(budget: MonthlyBudget): Promise<void> {
@@ -99,7 +106,7 @@ export async function syncBudgetToSupabase(budget: MonthlyBudget): Promise<void>
       : await supabase.from('calculator_monthly_budgets').insert(budgetData);
 
     if (result.error) throw new Error(`Presupuesto ${budget.monthKey}: ${result.error.message}`);
-  }, `el presupuesto ${budget.monthKey}`);
+  }, `el presupuesto ${budget.monthKey}`, 3, () => enqueuePendingSupabaseSync({ type: 'upsert_budget', payload: budget }));
 }
 
 export async function syncCategoryToSupabase(category: Category): Promise<void> {
@@ -118,7 +125,7 @@ export async function syncCategoryToSupabase(category: Category): Promise<void> 
     }, { onConflict: 'id' });
 
     if (error) throw new Error(`Categoría: ${error.message}`);
-  }, 'la categoría');
+  }, 'la categoría', 3, () => enqueuePendingSupabaseSync({ type: 'upsert_category', payload: category }));
 }
 
 export async function deleteCategoryFromSupabase(id: string): Promise<void> {
@@ -133,7 +140,7 @@ export async function deleteCategoryFromSupabase(id: string): Promise<void> {
       .eq('user_id', userId);
 
     if (error) throw new Error(`Categoría: ${error.message}`);
-  }, 'la eliminación de la categoría');
+  }, 'la eliminación de la categoría', 3, () => enqueuePendingSupabaseSync({ type: 'delete_category', payload: { id } }));
 }
 
 export async function syncSettingsToSupabase(settings: AppSettings): Promise<void> {
@@ -150,5 +157,5 @@ export async function syncSettingsToSupabase(settings: AppSettings): Promise<voi
     }, { onConflict: 'user_id' });
 
     if (error) throw new Error(`Configuración: ${error.message}`);
-  }, 'la configuración');
+  }, 'la configuración', 3, () => enqueuePendingSupabaseSync({ type: 'upsert_settings', payload: settings }));
 }
