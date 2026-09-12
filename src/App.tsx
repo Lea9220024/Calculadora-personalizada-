@@ -133,8 +133,6 @@ export default function App() {
         const cloudData = await readUserDataFromSupabase(userId);
         if (cancelled) return;
 
-        // Una lectura completa y exitosa de Supabase es la fuente principal.
-        // localStorage queda intacto como respaldo/fallback si la nube no responde.
         setTransactions(cloudData.transactions);
         setCategories(cloudData.categories);
         setBudgets(cloudData.budgets);
@@ -261,10 +259,12 @@ export default function App() {
     transactions: Transaction[];
     categories: Category[];
     budgets: MonthlyBudget[];
+    settings: AppSettings;
   }) => {
     setTransactions(imported.transactions);
     setCategories(imported.categories);
     setBudgets(imported.budgets);
+    setSettings(imported.settings);
   };
 
   const handleResetSampleData = () => {
@@ -392,17 +392,6 @@ export default function App() {
         )}
       </main>
 
-      <footer className="bg-zinc-950 border-t border-zinc-800 text-zinc-400 py-6 mt-12">
-        <div className="max-w-7xl mx-auto px-4 text-center text-xs space-y-1">
-          <p className="font-semibold text-zinc-300">
-            Control de Gastos Mensuales — Uso Personal (Pesos Argentinos - ARS)
-          </p>
-          <p className="text-zinc-500">
-            Los datos se guardan de forma privada en tu navegador. Puedes exportar o respaldar en cualquier momento.
-          </p>
-        </div>
-      </footer>
-
       <TransactionFormModal
         isOpen={isFormModalOpen}
         onClose={() => {
@@ -410,10 +399,8 @@ export default function App() {
           setEditingTransaction(null);
         }}
         onSave={handleSaveTransaction}
+        initialData={editingTransaction}
         categories={categories}
-        editingTransaction={editingTransaction}
-        currentMonthKey={currentMonthKey}
-        currencySymbol={settings.currencySymbol}
       />
 
       <ExportImportModal
