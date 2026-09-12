@@ -24,6 +24,7 @@ import { FinancialGoals } from './components/FinancialGoals';
 import { CategoryManager } from './components/CategoryManager';
 import { TransactionFormModal } from './components/TransactionFormModal';
 import { ExportImportModal } from './components/ExportImportModal';
+import { SafeImportModal } from './components/SafeImportModal';
 import { SupabaseSyncModal } from './components/SupabaseSyncModal';
 import { getCurrentMonthKey } from './utils/formatters';
 import { supabase } from './lib/supabase';
@@ -94,6 +95,7 @@ export default function App() {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isExportImportOpen, setIsExportImportOpen] = useState(false);
+  const [isSafeImportOpen, setIsSafeImportOpen] = useState(false);
   const [isSupabaseSyncOpen, setIsSupabaseSyncOpen] = useState(false);
 
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions)); }, [transactions]);
@@ -202,6 +204,10 @@ export default function App() {
   const handleImportFullData = (imported: { transactions: Transaction[]; categories: Category[]; budgets: MonthlyBudget[]; settings: AppSettings; }) => {
     setTransactions(imported.transactions); setCategories(imported.categories); setBudgets(imported.budgets); setSettings(imported.settings);
   };
+  const handleSafeImportTransactions = (imported: Transaction[]) => {
+    setTransactions(prev => [...imported, ...prev]);
+    imported.forEach(tx => syncInBackground(() => syncTransactionToSupabase(tx), 'el movimiento importado'));
+  };
   const handleResetSampleData = () => {
     setTransactions(INITIAL_TRANSACTIONS); setCategories(DEFAULT_CATEGORIES); setBudgets(INITIAL_BUDGET.monthKey ? [INITIAL_BUDGET] : []); setSettings(DEFAULT_SETTINGS);
   };
@@ -237,6 +243,7 @@ export default function App() {
       </main>
       <TransactionFormModal isOpen={isFormModalOpen} onClose={() => { setIsFormModalOpen(false); setEditingTransaction(null); }} onSave={handleSaveTransaction} initialData={editingTransaction} categories={categories} />
       <ExportImportModal isOpen={isExportImportOpen} onClose={() => setIsExportImportOpen(false)} transactions={transactions} categories={categories} budgets={budgets} settings={settings} onImportFullData={handleImportFullData} onResetSampleData={handleResetSampleData} />
+      <SafeImportModal isOpen={isSafeImportOpen} onClose={() => setIsSafeImportOpen(false)} transactions={transactions} categories={categories} onImportTransactions={handleSafeImportTransactions} />
       <SupabaseSyncModal isOpen={isSupabaseSyncOpen} onClose={() => setIsSupabaseSyncOpen(false)} transactions={transactions} categories={categories} budgets={budgets} settings={settings} />
     </div>
   );
