@@ -23,10 +23,10 @@ const checkSupabaseConnection = async () => {
   try {
     const response = await fetch(`${supabaseUrl}/auth/v1/health`, { headers: { apikey: supabasePublishableKey } });
     const body = await response.text();
-    if (!response.ok) return { ok: false, detail: `Supabase Auth respondió HTTP ${response.status}${body ? ` · ${body.slice(0, 160)}` : ' sin cuerpo de respuesta'}.` };
-    return { ok: true, detail: `Supabase Auth operativo · HTTP ${response.status}` };
+    if (!response.ok) return { ok: false, detail: `Supabase Auth respondió HTTP ${response.status}${body ? ` · ${body.slice(0, 160)}` : ' sin cuerpo de respuesta'} · URL: ${supabaseUrl}` };
+    return { ok: true, detail: `Supabase Auth operativo · HTTP ${response.status} · URL: ${supabaseUrl}` };
   } catch (error) {
-    return { ok: false, detail: `No se pudo conectar con Supabase desde este navegador: ${error instanceof Error ? error.message : String(error)}` };
+    return { ok: false, detail: `No se pudo conectar con Supabase desde este navegador · URL: ${supabaseUrl} · ${error instanceof Error ? error.message : String(error)}` };
   }
 };
 

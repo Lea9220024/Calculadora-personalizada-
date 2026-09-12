@@ -2,7 +2,15 @@ import { createClient } from '@supabase/supabase-js';
 
 const cleanEnvValue = (value: unknown) => String(value ?? '').trim().replace(/^['"]|['"]$/g, '');
 
-export const supabaseUrl = cleanEnvValue(import.meta.env.VITE_SUPABASE_URL).replace(/\/+$/, '');
+const normalizeSupabaseUrl = (value: unknown) => {
+  const cleaned = cleanEnvValue(value).replace(/\/+$/, '');
+  return cleaned
+    .replace(/\/auth\/v1$/i, '')
+    .replace(/\/rest\/v1$/i, '')
+    .replace(/\/storage\/v1$/i, '');
+};
+
+export const supabaseUrl = normalizeSupabaseUrl(import.meta.env.VITE_SUPABASE_URL);
 export const supabasePublishableKey = cleanEnvValue(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 
 if (!supabaseUrl || !supabasePublishableKey) {
