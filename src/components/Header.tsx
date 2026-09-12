@@ -4,6 +4,7 @@ import { GradientIcon } from './GradientIcon';
 import { ViewTab } from '../types';
 import { formatMonthYear, getAdjacentMonthKey, getCurrentMonthKey } from '../utils/formatters';
 import { supabase } from '../lib/supabase';
+import { SupabaseStatusBadge } from './SupabaseStatusBadge';
 
 interface HeaderProps { currentMonthKey: string; onMonthChange: (newMonthKey: string) => void; activeTab: ViewTab; onTabChange: (tab: ViewTab) => void; onOpenNewTransaction: () => void; onOpenExportImport: () => void; onOpenSupabaseSync: () => void; currencySymbol: string; onCurrencyChange: (symbol: string) => void; }
 type CloudStatus = 'offline' | 'connected' | 'syncing' | 'error';
@@ -76,6 +77,7 @@ export const Header: React.FC<HeaderProps> = ({ currentMonthKey, onMonthChange, 
           <div className="hidden md:flex items-center gap-3">
             <div className="flex items-center gap-1.5 bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-800 text-xs"><span className="text-zinc-400 font-medium">Moneda:</span><span className="text-orange-400 font-extrabold tracking-wide">$ ARS (Peso Argentino)</span></div>
             <button onClick={onOpenSupabaseSync} className="flex items-center gap-1.5 px-2.5 py-2 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors border border-zinc-800" title={statusLabel} id="supabase-sync-btn"><StatusIcon className={`w-4 h-4 ${cloudStatus === 'syncing' ? 'animate-spin' : ''}`} /><span className="hidden lg:inline text-[10px] font-semibold">{cloudStatus === 'connected' ? 'Sincronizado' : cloudStatus === 'syncing' ? 'Sincronizando' : cloudStatus === 'error' ? 'Error' : 'Sin sesión'}</span></button>
+            <SupabaseStatusBadge />
             <button onClick={onOpenExportImport} className="p-2 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors border border-zinc-800" title="Respaldos y Datos (CSV / JSON)" id="export-import-btn"><GradientIcon icon={Download} className="w-4 h-4" strokeWidth={2.2} /></button>
             <button onClick={onOpenNewTransaction} className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-400 text-black font-extrabold text-sm rounded-xl transition-all shadow-lg shadow-orange-950/40 hover:scale-[1.02] active:scale-[0.98]" id="desktop-add-btn"><Plus className="w-4 h-4 text-black" strokeWidth={2.8} /><span>Nuevo Reg.</span></button>
           </div>
