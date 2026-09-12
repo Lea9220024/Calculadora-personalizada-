@@ -14,11 +14,23 @@ interface ExportImportModalProps {
     transactions: Transaction[];
     categories: Category[];
     budgets: MonthlyBudget[];
+    settings: AppSettings;
   }) => void;
   onResetSampleData: () => void;
 }
 
 const BACKUP_VERSION = '1.1';
+
+const isValidSettings = (value: unknown): value is AppSettings => {
+  if (!value || typeof value !== 'object') return false;
+  const data = value as Record<string, unknown>;
+  return typeof data.currencySymbol === 'string' &&
+    typeof data.currencyCode === 'string' &&
+    (data.theme === 'light' || data.theme === 'dark' || data.theme === 'system') &&
+    typeof data.startDayOfMonth === 'number' &&
+    Number.isInteger(data.startDayOfMonth) &&
+    data.startDayOfMonth >= 1 && data.startDayOfMonth <= 31;
+};
 
 const isValidBackup = (value: unknown): value is {
   version?: string;
@@ -31,7 +43,8 @@ const isValidBackup = (value: unknown): value is {
   const data = value as Record<string, unknown>;
   return Array.isArray(data.transactions) &&
     (data.categories === undefined || Array.isArray(data.categories)) &&
-    (data.budgets === undefined || Array.isArray(data.budgets));
+    (data.budgets === undefined || Array.isArray(data.budgets)) &&
+    (data.settings === undefined || isValidSettings(data.settings));
 };
 
 export const ExportImportModal: React.FC<ExportImportModalProps> = ({
@@ -51,6 +64,7 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
     transactions: Transaction[];
     categories: Category[];
     budgets: MonthlyBudget[];
+    settings: AppSettings;
   } | null>(null);
 
   if (!isOpen) return null;
@@ -124,12 +138,14 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
           transactions: Transaction[];
           categories?: Category[];
           budgets?: MonthlyBudget[];
+          settings?: AppSettings;
         };
 
         setPendingImport({
           transactions: data.transactions,
           categories: data.categories || categories,
-          budgets: data.budgets || budgets
+          budgets: data.budgets || budgets,
+          settings: data.settings || settings
         });
         setSuccessMsg(`Respaldo válido detectado${data.version ? ` (v${data.version})` : ''}. Revisá el resumen y confirmá la restauración.`);
       } catch {
@@ -180,8 +196,9 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
                 <li>• {pendingImport.transactions.length} movimientos</li>
                 <li>• {pendingImport.categories.length} categorías</li>
                 <li>• {pendingImport.budgets.length} presupuestos</li>
+                <li>• Configuración incluida</li>
               </ul>
-              <p className="text-[11px] text-amber-300">La restauración reemplazará los datos locales actuales por los del archivo.</p>
+              <p className="text-[11px] text-amber-300">La restauración reemplazará los datos locales actuales por los del archivo, incluida la configuración.</p>
               <div className="flex gap-2 pt-1">
                 <button onClick={() => setPendingImport(null)} className="flex-1 p-2.5 text-xs font-bold text-zinc-300 bg-zinc-800 rounded-xl hover:bg-zinc-700">Cancelar</button>
                 <button onClick={confirmImport} className="flex-1 p-2.5 text-xs font-extrabold text-black bg-orange-400 rounded-xl hover:bg-orange-300">Confirmar restauración</button>
