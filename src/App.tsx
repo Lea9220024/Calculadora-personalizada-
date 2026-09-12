@@ -16,6 +16,7 @@ import { ExportImportModal } from './components/ExportImportModal';
 import { SafeImportModal } from './components/SafeImportModal';
 import { SupabaseSyncModal } from './components/SupabaseSyncModal';
 import { getCurrentMonthKey } from './utils/formatters';
+import { categorizeTransaction } from './utils/autoCategorization';
 import { supabase } from './lib/supabase';
 import { readUserDataFromSupabase } from './lib/supabaseRead';
 import { subscribeToCalculatorRealtime, unsubscribeFromCalculatorRealtime } from './lib/supabaseRealtime';
@@ -80,7 +81,25 @@ export default function App() {
   const monthIncome = monthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
   const monthExpenses = monthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
   const currentBudget = budgets.find(b => b.monthKey === currentMonthKey) || { monthKey: currentMonthKey, totalTarget: 0, categoryTargets: {} };
-  const handleSaveTransaction = (txData: Omit<Transaction, 'id' | 'createdAt'>) => { if (editingTransaction) { const updatedTransaction = { ...editingTransaction, ...txData }; setTransactions(prev => prev.map(t => t.id === editingTransaction.id ? updatedTransaction : t)); syncInBackground(() => syncTransactionToSupabase(updatedTransaction), 'el movimiento'); setEditingTransaction(null); } else { const newTx: Transaction = { ...txData, id: createTransactionId(), createdAt: new Date().toISOString() }; setTransactions(prev => [newTx, ...prev]); syncInBackground(() => syncTransactionToSupabase(newTx), 'el movimiento'); } };
+
+  const handleSaveTransaction = (txData: Omit<Transaction, 'id' | 'createdAt'>) => {
+    if (editingTransaction) {
+      const updatedTransaction = { ...editingTransaction, ...txData };
+      setTransactions(prev => prev.map(t => t.id === editingTransaction.id ? updatedTransaction : t));
+      syncInBackground(() => syncTransactionToSupabase(updatedTransaction), 'el movimiento');
+      setEditingTransaction(null);
+    } else {
+      const newTx: Transaction = { ...txData, id: createTransactionId(), createdAt: new Date().toISOString() };
+      const defaultCategoryId = categories.find(c => c.type === newTx.type || c.type === 'both')?.id;
+      // La categorización automática solo toma control si el usuario dejó la categoría por defecto.
+      const finalTx = newTx.categoryId === defaultCategoryId
+        ? categorizeTransaction(newTx, categories, transactions)
+        : newTx;
+      setTransactions(prev => [finalTx, ...prev]);
+      syncInBackground(() => syncTransactionToSupabase(finalTx), 'el movimiento');
+    }
+  };
+
   const handleDuplicateTransaction = (tx: Transaction) => { const duplicated: Transaction = { ...tx, id: createTransactionId(), title: `${tx.title} (Copia)`, createdAt: new Date().toISOString() }; setTransactions(prev => [duplicated, ...prev]); syncInBackground(() => syncTransactionToSupabase(duplicated), 'el movimiento duplicado'); };
   const handleDeleteTransaction = (id: string) => { if (window.confirm('¿Seguro que deseas borrar este registro?')) { setTransactions(prev => prev.filter(t => t.id !== id)); syncInBackground(() => deleteTransactionFromSupabase(id), 'la eliminación del movimiento'); } };
   const handleUpdateBudget = (newBudget: MonthlyBudget) => { setBudgets(prev => prev.some(b => b.monthKey === newBudget.monthKey) ? prev.map(b => b.monthKey === newBudget.monthKey ? newBudget : b) : [...prev, newBudget]); syncInBackground(() => syncBudgetToSupabase(newBudget), 'el presupuesto'); };
@@ -104,7 +123,7 @@ export default function App() {
       {activeTab === 'analytics' && <><AnalyticsCharts transactions={monthTransactions} categories={categories} currencySymbol={settings.currencySymbol} /><HistoricalAnalysis transactions={transactions} currencySymbol={settings.currencySymbol} /><div className="mt-6"><FinancialGoals transactions={transactions} currencySymbol={settings.currencySymbol} /></div></>}
       {activeTab === 'categories' && <CategoryManager categories={categories} onAddCategory={handleAddCategory} onUpdateCategory={handleUpdateCategory} onDeleteCategory={handleDeleteCategory} />}
     </main>
-    <TransactionFormModal isOpen={isFormModalOpen} onClose={() => { setIsFormModalOpen(false); setEditingTransaction(null); }} onSave={handleSaveTransaction} initialData={editingTransaction} categories={categories} />
+    <TransactionFormModal isOpen={isFormModalOpen} onClose={() => { setIsFormModalOpen(false); setEditingTransaction(null); }} onSave={handleSaveTransaction} initialData={editingTransaction} categories={categories} currentMonthKey={currentMonthKey} currencySymbol={settings.currencySymbol} />
     <ExportImportModal isOpen={isExportImportOpen} onClose={() => setIsExportImportOpen(false)} transactions={transactions} categories={categories} budgets={budgets} settings={settings} onImportFullData={handleImportFullData} onResetSampleData={handleResetSampleData} onOpenSafeImport={() => { setIsExportImportOpen(false); setIsSafeImportOpen(true); }} />
     <SafeImportModal isOpen={isSafeImportOpen} onClose={() => setIsSafeImportOpen(false)} transactions={transactions} categories={categories} onImportTransactions={handleSafeImportTransactions} />
     <SupabaseSyncModal isOpen={isSupabaseSyncOpen} onClose={() => setIsSupabaseSyncOpen(false)} transactions={transactions} categories={categories} budgets={budgets} settings={settings} />
