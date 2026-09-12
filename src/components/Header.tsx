@@ -1,13 +1,56 @@
-import React from 'react';
-import { ChevronLeft, ChevronRight, Plus, Wallet, Download, PieChart, ListOrdered, Target, LayoutDashboard, Settings, Calendar, Cloud } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ChevronLeft, ChevronRight, Plus, Wallet, Download, PieChart, ListOrdered, Target, LayoutDashboard, Settings, Calendar, Cloud, CloudOff, RefreshCw } from 'lucide-react';
 import { GradientIcon } from './GradientIcon';
 import { ViewTab } from '../types';
 import { formatMonthYear, getAdjacentMonthKey, getCurrentMonthKey } from '../utils/formatters';
+import { supabase } from '../lib/supabase';
 
 interface HeaderProps { currentMonthKey: string; onMonthChange: (newMonthKey: string) => void; activeTab: ViewTab; onTabChange: (tab: ViewTab) => void; onOpenNewTransaction: () => void; onOpenExportImport: () => void; onOpenSupabaseSync: () => void; currencySymbol: string; onCurrencyChange: (symbol: string) => void; }
+type CloudStatus = 'offline' | 'connected' | 'syncing' | 'error';
 
-export const Header: React.FC<HeaderProps> = ({ currentMonthKey, onMonthChange, activeTab, onTabChange, onOpenNewTransaction, onOpenExportImport, onOpenSupabaseSync, currencySymbol, onCurrencyChange }) => {
+export const Header: React.FC<HeaderProps> = ({ currentMonthKey, onMonthChange, activeTab, onTabChange, onOpenNewTransaction, onOpenExportImport, onOpenSupabaseSync }) => {
   const isCurrentMonth = currentMonthKey === getCurrentMonthKey();
+  const [cloudStatus, setCloudStatus] = useState<CloudStatus>('offline');
+
+  useEffect(() => {
+    if (!supabase) return;
+    let mounted = true;
+
+    const updateSessionStatus = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (mounted) setCloudStatus(session?.user ? 'connected' : 'offline');
+    };
+
+    void updateSessionStatus();
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (mounted) setCloudStatus(session?.user ? 'connected' : 'offline');
+    });
+
+    const handleSyncStatus = (event: Event) => {
+      const detail = (event as CustomEvent<{ status?: string }>).detail;
+      if (detail?.status === 'pending') setCloudStatus('syncing');
+      if (detail?.status === 'synced') setCloudStatus('connected');
+      if (detail?.status === 'error') setCloudStatus('error');
+    };
+
+    window.addEventListener('supabase-sync-status', handleSyncStatus);
+    return () => {
+      mounted = false;
+      authListener.subscription.unsubscribe();
+      window.removeEventListener('supabase-sync-status', handleSyncStatus);
+    };
+  }, []);
+
+  const statusLabel = cloudStatus === 'connected'
+    ? 'Supabase sincronizado'
+    : cloudStatus === 'syncing'
+      ? 'Sincronizando con Supabase…'
+      : cloudStatus === 'error'
+        ? 'Error de sincronización — reintenta'
+        : 'Sin sesión en Supabase';
+
+  const StatusIcon = cloudStatus === 'syncing' ? RefreshCw : cloudStatus === 'offline' ? CloudOff : Cloud;
+
   return (
     <header className="bg-zinc-950 text-zinc-100 border-b border-zinc-800/80 sticky top-0 z-30 shadow-xl backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -18,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({ currentMonthKey, onMonthChange, 
               <div><h1 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">Mis Gastos Mensuales<span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/30">ARS $</span></h1><p className="text-xs text-zinc-400 hidden sm:block">Control financiero personal en Pesos Argentinos</p></div>
             </div>
             <div className="flex items-center gap-2 md:hidden">
-              <button onClick={onOpenSupabaseSync} className="flex items-center justify-center w-9 h-9 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors border border-zinc-800" title="Nube y respaldo Supabase" aria-label="Nube y respaldo Supabase" id="mobile-supabase-sync-btn"><GradientIcon icon={Cloud} className="w-4 h-4" strokeWidth={2.2} /></button>
+              <button onClick={onOpenSupabaseSync} className="flex items-center justify-center w-9 h-9 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors border border-zinc-800" title={statusLabel} aria-label={statusLabel} id="mobile-supabase-sync-btn"><StatusIcon className={`w-4 h-4 ${cloudStatus === 'syncing' ? 'animate-spin' : ''}`} /><span className="sr-only">{statusLabel}</span></button>
               <button onClick={onOpenNewTransaction} className="flex items-center gap-1.5 px-3.5 py-2 bg-orange-500 hover:bg-orange-400 text-black font-extrabold text-xs rounded-xl transition-all shadow-md shadow-orange-950/40" id="mobile-add-btn"><Plus className="w-4 h-4 text-black" strokeWidth={2.5} /><span>Nuevo</span></button>
             </div>
           </div>
@@ -32,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({ currentMonthKey, onMonthChange, 
 
           <div className="hidden md:flex items-center gap-3">
             <div className="flex items-center gap-1.5 bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-800 text-xs"><span className="text-zinc-400 font-medium">Moneda:</span><span className="text-orange-400 font-extrabold tracking-wide">$ ARS (Peso Argentino)</span></div>
-            <button onClick={onOpenSupabaseSync} className="p-2 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors border border-zinc-800" title="Nube y respaldo Supabase" id="supabase-sync-btn"><GradientIcon icon={Cloud} className="w-4 h-4" strokeWidth={2.2} /></button>
+            <button onClick={onOpenSupabaseSync} className="flex items-center gap-1.5 px-2.5 py-2 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors border border-zinc-800" title={statusLabel} id="supabase-sync-btn"><StatusIcon className={`w-4 h-4 ${cloudStatus === 'syncing' ? 'animate-spin' : ''}`} /><span className="hidden lg:inline text-[10px] font-semibold">{cloudStatus === 'connected' ? 'Sincronizado' : cloudStatus === 'syncing' ? 'Sincronizando' : cloudStatus === 'error' ? 'Error' : 'Sin sesión'}</span></button>
             <button onClick={onOpenExportImport} className="p-2 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors border border-zinc-800" title="Respaldos y Datos (CSV / JSON)" id="export-import-btn"><GradientIcon icon={Download} className="w-4 h-4" strokeWidth={2.2} /></button>
             <button onClick={onOpenNewTransaction} className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-400 text-black font-extrabold text-sm rounded-xl transition-all shadow-lg shadow-orange-950/40 hover:scale-[1.02] active:scale-[0.98]" id="desktop-add-btn"><Plus className="w-4 h-4 text-black" strokeWidth={2.8} /><span>Nuevo Reg.</span></button>
           </div>
