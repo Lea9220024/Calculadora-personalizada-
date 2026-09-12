@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Wallet, Download, PieChart, ListOrdered, Target, LayoutDashboard, Settings, Calendar, Cloud, CloudOff, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Wallet, Download, PieChart, ListOrdered, Target, LayoutDashboard, Settings, Calendar, Cloud, CloudOff, RefreshCw, Sun, Moon, Monitor } from 'lucide-react';
 import { GradientIcon } from './GradientIcon';
 import { ViewTab } from '../types';
 import { formatMonthYear, getAdjacentMonthKey, getCurrentMonthKey } from '../utils/formatters';
 import { supabase } from '../lib/supabase';
 import { SupabaseStatusBadge } from './SupabaseStatusBadge';
 
-interface HeaderProps { currentMonthKey: string; onMonthChange: (newMonthKey: string) => void; activeTab: ViewTab; onTabChange: (tab: ViewTab) => void; onOpenNewTransaction: () => void; onOpenExportImport: () => void; onOpenSupabaseSync: () => void; currencySymbol: string; onCurrencyChange: (symbol: string) => void; }
+interface HeaderProps { currentMonthKey: string; onMonthChange: (newMonthKey: string) => void; activeTab: ViewTab; onTabChange: (tab: ViewTab) => void; onOpenNewTransaction: () => void; onOpenExportImport: () => void; onOpenSupabaseSync: () => void; currencySymbol: string; onCurrencyChange: (symbol: string) => void; theme: 'light' | 'dark' | 'system'; onThemeChange: (theme: 'light' | 'dark' | 'system') => void; }
 type CloudStatus = 'offline' | 'connected' | 'syncing' | 'error';
 
-export const Header: React.FC<HeaderProps> = ({ currentMonthKey, onMonthChange, activeTab, onTabChange, onOpenNewTransaction, onOpenExportImport, onOpenSupabaseSync }) => {
+export const Header: React.FC<HeaderProps> = ({ currentMonthKey, onMonthChange, activeTab, onTabChange, onOpenNewTransaction, onOpenExportImport, onOpenSupabaseSync, theme, onThemeChange }) => {
   const isCurrentMonth = currentMonthKey === getCurrentMonthKey();
   const [cloudStatus, setCloudStatus] = useState<CloudStatus>('offline');
 
@@ -41,6 +41,9 @@ export const Header: React.FC<HeaderProps> = ({ currentMonthKey, onMonthChange, 
   const statusLabel = cloudStatus === 'connected' ? 'Supabase sincronizado' : cloudStatus === 'syncing' ? 'Sincronizando con Supabase…' : cloudStatus === 'error' ? 'Error de sincronización — reintenta' : 'Sin sesión en Supabase';
   const StatusIcon = cloudStatus === 'syncing' ? RefreshCw : cloudStatus === 'offline' ? CloudOff : Cloud;
   const activeTabClass = 'bg-zinc-900 text-emerald-400 border border-emerald-500/30 shadow-sm';
+  const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
+  const nextTheme = theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark';
+  const themeLabel = theme === 'dark' ? 'Modo nocturno' : theme === 'light' ? 'Modo día' : 'Modo sistema';
 
   return (
     <header className="bg-zinc-950 text-zinc-100 border-b border-zinc-800/80 sticky top-0 z-30 shadow-xl backdrop-blur-md">
@@ -49,9 +52,10 @@ export const Header: React.FC<HeaderProps> = ({ currentMonthKey, onMonthChange, 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shadow-md"><GradientIcon icon={Wallet} className="w-5 h-5" strokeWidth={2.4} /></div>
-              <div><h1 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">Mis Gastos Mensuales<span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-zinc-900 text-emerald-400 border border-emerald-500/20">ARS $</span></h1><p className="text-xs text-zinc-400 hidden sm:block">Control financiero personal en Pesos Argentinos</p></div>
+              <div><h1 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">C.R.E.A.M.<span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-zinc-900 text-emerald-400 border border-emerald-500/20">ARS $</span></h1><p className="text-xs text-zinc-400 hidden sm:block">Control financiero personal en Pesos Argentinos</p></div>
             </div>
             <div className="flex items-center gap-2 md:hidden">
+              <button onClick={() => onThemeChange(nextTheme)} className="flex items-center justify-center w-9 h-9 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors border border-zinc-800" title={`${themeLabel}. Toca para cambiar.`} aria-label={`${themeLabel}. Toca para cambiar.`} id="mobile-theme-btn"><ThemeIcon className="w-4 h-4" /><span className="sr-only">{themeLabel}</span></button>
               <button onClick={onOpenSupabaseSync} className="flex items-center justify-center w-9 h-9 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors border border-zinc-800" title={statusLabel} aria-label={statusLabel} id="mobile-supabase-sync-btn"><StatusIcon className={`w-4 h-4 ${cloudStatus === 'syncing' ? 'animate-spin' : ''}`} /><span className="sr-only">{statusLabel}</span></button>
               <button onClick={onOpenNewTransaction} className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs rounded-xl transition-all shadow-md shadow-emerald-950/40" id="mobile-add-btn"><Plus className="w-4 h-4 text-black" strokeWidth={2.5} /><span>Nuevo</span></button>
             </div>
@@ -66,6 +70,7 @@ export const Header: React.FC<HeaderProps> = ({ currentMonthKey, onMonthChange, 
 
           <div className="hidden md:flex items-center gap-3">
             <div className="flex items-center gap-1.5 bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-800 text-xs"><span className="text-zinc-400 font-medium">Moneda:</span><span className="text-emerald-400 font-extrabold tracking-wide">$ ARS (Peso Argentino)</span></div>
+            <button onClick={() => onThemeChange(nextTheme)} className="flex items-center gap-1.5 px-2.5 py-2 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors border border-zinc-800" title={`${themeLabel}. Toca para cambiar.`} id="theme-btn"><ThemeIcon className="w-4 h-4" /><span className="hidden lg:inline text-[10px] font-semibold">{themeLabel}</span></button>
             <button onClick={onOpenSupabaseSync} className="flex items-center gap-1.5 px-2.5 py-2 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors border border-zinc-800" title={statusLabel} id="supabase-sync-btn"><StatusIcon className={`w-4 h-4 ${cloudStatus === 'syncing' ? 'animate-spin' : ''}`} /><span className="hidden lg:inline text-[10px] font-semibold">{cloudStatus === 'connected' ? 'Sincronizado' : cloudStatus === 'syncing' ? 'Sincronizando' : cloudStatus === 'error' ? 'Error' : 'Sin sesión'}</span></button>
             <SupabaseStatusBadge />
             <button onClick={onOpenExportImport} className="p-2 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors border border-zinc-800" title="Respaldos y Datos (CSV / JSON)" id="export-import-btn"><GradientIcon icon={Download} className="w-4 h-4" strokeWidth={2.2} /></button>
