@@ -31,7 +31,7 @@ export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>(() => { try { const saved = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS); if (saved) return JSON.parse(saved); } catch (e) { console.error(e); } return INITIAL_TRANSACTIONS; });
   const [categories, setCategories] = useState<Category[]>(() => { try { const saved = localStorage.getItem(STORAGE_KEYS.CATEGORIES); if (saved) return JSON.parse(saved); } catch (e) { console.error(e); } return DEFAULT_CATEGORIES; });
   const [budgets, setBudgets] = useState<MonthlyBudget[]>(() => { try { const saved = localStorage.getItem(STORAGE_KEYS.BUDGETS); if (saved) return JSON.parse(saved); } catch (e) { console.error(e); } return INITIAL_BUDGET.monthKey ? [INITIAL_BUDGET] : []; });
-  const [settings, setSettings] = useState<AppSettings>(() => { try { const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS); if (saved) return JSON.parse(saved); } catch (e) { console.error(e); } return DEFAULT_SETTINGS; });
+  const [settings, setSettings] = useState<AppSettings>(() => { try { const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS); if (saved) return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) }; } catch (e) { console.error(e); } return DEFAULT_SETTINGS; });
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isExportImportOpen, setIsExportImportOpen] = useState(false);
@@ -44,9 +44,25 @@ export default function App() {
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings)); }, [settings]);
 
   useEffect(() => {
+    const root = document.documentElement;
+    const applyTheme = () => {
+      const isLight = settings.theme === 'light' || (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+      root.classList.toggle('theme-light', isLight);
+      root.classList.toggle('theme-dark', !isLight);
+      root.style.colorScheme = isLight ? 'light' : 'dark';
+    };
+    applyTheme();
+    if (settings.theme !== 'system') return;
+    const media = window.matchMedia('(prefers-color-scheme: light)');
+    const handleChange = () => applyTheme();
+    media.addEventListener?.('change', handleChange);
+    return () => media.removeEventListener?.('change', handleChange);
+  }, [settings.theme]);
+
+  useEffect(() => {
     if (!supabase) return;
     let cancelled = false; let loadingUserId: string | null = null; let realtimeChannel: ReturnType<typeof subscribeToCalculatorRealtime> = null;
-    const loadCloudData = async (userId: string) => { if (cancelled || loadingUserId === userId) return; loadingUserId = userId; try { const cloudData = await readUserDataFromSupabase(userId); if (cancelled) return; setTransactions(cloudData.transactions); setCategories(cloudData.categories); setBudgets(cloudData.budgets); if (cloudData.settings) setSettings(cloudData.settings); } catch (error) { console.warn('No se pudieron cargar los datos desde Supabase. Se mantiene la copia local.', error); } finally { if (loadingUserId === userId) loadingUserId = null; } };
+    const loadCloudData = async (userId: string) => { if (cancelled || loadingUserId === userId) return; loadingUserId = userId; try { const cloudData = await readUserDataFromSupabase(userId); if (cancelled) return; setTransactions(cloudData.transactions); setCategories(cloudData.categories); setBudgets(cloudData.budgets); if (cloudData.settings) setSettings(prev => ({ ...prev, ...cloudData.settings })); } catch (error) { console.warn('No se pudieron cargar los datos desde Supabase. Se mantiene la copia local.', error); } finally { if (loadingUserId === userId) loadingUserId = null; } };
     const startRealtime = (userId: string) => { if (cancelled || realtimeChannel) return; realtimeChannel = subscribeToCalculatorRealtime(userId, () => { void loadCloudData(userId); }); };
     const loadCurrentSession = async () => { const { data: { session } } = await supabase.auth.getSession(); if (!cancelled && session?.user) { await loadCloudData(session.user.id); startRealtime(session.user.id); } };
     void loadCurrentSession();
@@ -66,13 +82,14 @@ export default function App() {
   const handleUpdateCategory = (updated: Category) => { setCategories(prev => prev.map(c => c.id === updated.id ? updated : c)); syncInBackground(() => syncCategoryToSupabase(updated), 'la categoría'); };
   const handleDeleteCategory = (id: string) => { if (window.confirm('¿Deseas eliminar esta categoría?')) { setCategories(prev => prev.filter(c => c.id !== id)); syncInBackground(() => deleteCategoryFromSupabase(id), 'la eliminación de la categoría'); } };
   const handleCurrencyChange = (sym: string) => { const nextSettings = { ...settings, currencySymbol: sym }; setSettings(nextSettings); syncInBackground(() => syncSettingsToSupabase(nextSettings), 'la configuración'); };
-  const handleImportFullData = (imported: { transactions: Transaction[]; categories: Category[]; budgets: MonthlyBudget[]; settings: AppSettings }) => { setTransactions(imported.transactions); setCategories(imported.categories); setBudgets(imported.budgets); setSettings(imported.settings); };
+  const handleThemeChange = (theme: AppSettings['theme']) => { const nextSettings = { ...settings, theme }; setSettings(nextSettings); syncInBackground(() => syncSettingsToSupabase(nextSettings), 'el tema visual'); };
+  const handleImportFullData = (imported: { transactions: Transaction[]; categories: Category[]; budgets: MonthlyBudget[]; settings: AppSettings }) => { setTransactions(imported.transactions); setCategories(imported.categories); setBudgets(imported.budgets); setSettings({ ...DEFAULT_SETTINGS, ...imported.settings }); };
   const handleSafeImportTransactions = (imported: Transaction[]) => { setTransactions(prev => [...imported, ...prev]); imported.forEach(tx => syncInBackground(() => syncTransactionToSupabase(tx), 'el movimiento importado')); };
   const handleResetSampleData = () => { setTransactions(INITIAL_TRANSACTIONS); setCategories(DEFAULT_CATEGORIES); setBudgets(INITIAL_BUDGET.monthKey ? [INITIAL_BUDGET] : []); setSettings(DEFAULT_SETTINGS); };
 
   return <div className="min-h-screen bg-black text-zinc-100 font-sans flex flex-col selection:bg-orange-500 selection:text-black">
     <GlobalGradientDefs />
-    <Header currentMonthKey={currentMonthKey} onMonthChange={setCurrentMonthKey} activeTab={activeTab} onTabChange={setActiveTab} onOpenNewTransaction={() => { setEditingTransaction(null); setIsFormModalOpen(true); }} onOpenExportImport={() => setIsExportImportOpen(true)} onOpenSupabaseSync={() => setIsSupabaseSyncOpen(true)} currencySymbol={settings.currencySymbol} onCurrencyChange={handleCurrencyChange} />
+    <Header currentMonthKey={currentMonthKey} onMonthChange={setCurrentMonthKey} activeTab={activeTab} onTabChange={setActiveTab} onOpenNewTransaction={() => { setEditingTransaction(null); setIsFormModalOpen(true); }} onOpenExportImport={() => setIsExportImportOpen(true)} onOpenSupabaseSync={() => setIsSupabaseSyncOpen(true)} currencySymbol={settings.currencySymbol} onCurrencyChange={handleCurrencyChange} theme={settings.theme} onThemeChange={handleThemeChange} />
     <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {(activeTab === 'dashboard' || activeTab === 'transactions') && <SummaryCards totalIncome={monthIncome} totalExpenses={monthExpenses} budgetTarget={currentBudget.totalTarget} currencySymbol={settings.currencySymbol} onEditBudgetClick={() => setActiveTab('budgets')} />}
       {activeTab === 'dashboard' && <div className="space-y-6"><div className="grid grid-cols-1 lg:grid-cols-12 gap-6"><div className="lg:col-span-7 space-y-6"><TransactionList transactions={monthTransactions} categories={categories} currencySymbol={settings.currencySymbol} onEdit={tx => { setEditingTransaction(tx); setIsFormModalOpen(true); }} onDuplicate={handleDuplicateTransaction} onDelete={handleDeleteTransaction} onAddNew={() => { setEditingTransaction(null); setIsFormModalOpen(true); }} /></div><div className="lg:col-span-5 space-y-6"><BudgetOverview currentMonthKey={currentMonthKey} monthlyBudget={currentBudget} transactions={monthTransactions} categories={categories} currencySymbol={settings.currencySymbol} onUpdateBudget={handleUpdateBudget} /></div></div><FinancialIntelligence currentMonthKey={currentMonthKey} budgetTarget={currentBudget.totalTarget} transactions={monthTransactions} currencySymbol={settings.currencySymbol} /><FinancialGoals transactions={transactions} currencySymbol={settings.currencySymbol} /><AnalyticsCharts transactions={monthTransactions} categories={categories} currencySymbol={settings.currencySymbol} /><HistoricalAnalysis transactions={transactions} currencySymbol={settings.currencySymbol} /></div>}
