@@ -59,6 +59,12 @@ export default function App() {
     return () => media.removeEventListener?.('change', handleChange);
   }, [settings.theme]);
 
+  // C.R.E.A.M. nunca bloquea la orientación del dispositivo.
+  useEffect(() => {
+    const orientation = window.screen?.orientation;
+    try { orientation?.unlock?.(); } catch { /* Algunos navegadores no permiten unlock fuera de una PWA compatible. */ }
+  }, []);
+
   useEffect(() => {
     if (!supabase) return;
     let cancelled = false; let loadingUserId: string | null = null; let realtimeChannel: ReturnType<typeof subscribeToCalculatorRealtime> = null;
