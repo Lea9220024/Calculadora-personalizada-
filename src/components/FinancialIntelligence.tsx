@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, CalendarClock, Gauge, TrendingUp } from 'lucide-react';
+import { Activity, AlertTriangle, CalendarClock, CheckCircle2, Gauge, Lightbulb, TrendingUp } from 'lucide-react';
 import { Transaction } from '../types';
 import { formatCurrency } from '../utils/formatters';
 
@@ -45,6 +45,15 @@ export const FinancialIntelligence: React.FC<FinancialIntelligenceProps> = ({
   const paceVsBudget = budgetTarget > 0 && elapsedDays > 0
     ? (totalSpent / budgetTarget) - (elapsedDays / daysInMonth)
     : 0;
+  const pacePercent = paceVsBudget * 100;
+  const projectionOver = projectionDelta > 0;
+
+  const expenseByCategory = expenses.reduce<Record<string, number>>((acc, tx) => {
+    acc[tx.categoryId] = (acc[tx.categoryId] || 0) + tx.amount;
+    return acc;
+  }, {});
+  const topCategory = Object.entries(expenseByCategory).sort((a, b) => b[1] - a[1])[0];
+  const topCategoryShare = totalSpent > 0 && topCategory ? (topCategory[1] / totalSpent) * 100 : 0;
 
   const metricCards = [
     {
@@ -68,22 +77,38 @@ export const FinancialIntelligence: React.FC<FinancialIntelligenceProps> = ({
       label: 'Proyección de cierre',
       value: formatCurrency(projectedClose, currencySymbol),
       detail: budgetTarget > 0
-        ? projectionDelta > 0
+        ? projectionOver
           ? `≈ ${formatCurrency(projectionDelta, currencySymbol)} por encima`
           : `≈ ${formatCurrency(Math.abs(projectionDelta), currencySymbol)} por debajo`
         : 'Sin presupuesto de referencia',
-      tone: projectionDelta > 0 ? 'text-rose-400' : 'text-orange-400'
+      tone: projectionOver ? 'text-rose-400' : 'text-orange-400'
     },
     {
       icon: Gauge,
       label: 'Ritmo vs. objetivo',
       value: budgetTarget > 0
-        ? `${Math.abs(paceVsBudget * 100).toFixed(0)}% ${paceVsBudget > 0 ? 'por encima' : paceVsBudget < 0 ? 'por debajo' : 'en línea'}`
+        ? `${Math.abs(pacePercent).toFixed(0)}% ${pacePercent > 0 ? 'por encima' : pacePercent < 0 ? 'por debajo' : 'en línea'}`
         : 'Sin referencia',
       detail: budgetTarget > 0 ? 'Comparado con el avance ideal del mes' : 'Definí un presupuesto global',
-      tone: paceVsBudget > 0.02 ? 'text-rose-400' : 'text-orange-400'
+      tone: pacePercent > 2 ? 'text-rose-400' : 'text-orange-400'
     }
   ];
+
+  const alert = !budgetTarget || !isCurrentMonth
+    ? null
+    : projectionOver
+      ? {
+          icon: AlertTriangle,
+          title: 'Estás gastando demasiado rápido',
+          text: `A este ritmo proyectás superar tu presupuesto en ${formatCurrency(projectionDelta, currencySymbol)}.`,
+          tone: 'border-rose-500/30 bg-rose-500/10 text-rose-300'
+        }
+      : {
+          icon: CheckCircle2,
+          title: 'Vas dentro del presupuesto',
+          text: `A este ritmo proyectás cerrar ${formatCurrency(Math.abs(projectionDelta), currencySymbol)} por debajo del objetivo.`,
+          tone: 'border-orange-500/30 bg-orange-500/10 text-orange-300'
+        };
 
   return (
     <section className="rounded-3xl border border-zinc-800 bg-zinc-900/90 p-5 shadow-md">
@@ -93,7 +118,7 @@ export const FinancialIntelligence: React.FC<FinancialIntelligenceProps> = ({
           <h2 className="text-lg font-black text-white">Inteligencia financiera</h2>
         </div>
         <p className="text-xs text-zinc-400">
-          El presupuesto ahora te muestra el ritmo de gasto y qué nivel de gasto podés sostener hasta fin de mes.
+          El presupuesto ahora interpreta tu comportamiento y te avisa cuando el ritmo de gasto requiere atención.
         </p>
       </div>
 
@@ -110,16 +135,35 @@ export const FinancialIntelligence: React.FC<FinancialIntelligenceProps> = ({
         ))}
       </div>
 
+      {alert && (
+        <div className={`mt-4 rounded-2xl border px-4 py-3 flex items-start gap-3 ${alert.tone}`}>
+          <alert.icon className="w-5 h-5 shrink-0 mt-0.5" strokeWidth={2.2} />
+          <div>
+            <div className="text-sm font-black">{alert.title}</div>
+            <div className="text-xs mt-0.5 opacity-90">{alert.text}</div>
+          </div>
+        </div>
+      )}
+
       {isCurrentMonth && budgetTarget > 0 && (
-        <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-950/50 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
-          <span className="text-zinc-400">
-            Gastaste <strong className="text-zinc-200">{formatCurrency(totalSpent, currencySymbol)}</strong> de <strong className="text-zinc-200">{formatCurrency(budgetTarget, currencySymbol)}</strong>.
-          </span>
-          <span className={projectionDelta > 0 ? 'text-rose-400 font-bold' : 'text-orange-400 font-bold'}>
-            {projectionDelta > 0
-              ? 'Si mantenés este ritmo, vas a superar el presupuesto.'
-              : 'Si mantenés este ritmo, cerrás dentro del presupuesto.'}
-          </span>
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-950/50 px-4 py-3 flex items-start gap-3">
+            <Lightbulb className="w-4 h-4 text-orange-400 mt-0.5 shrink-0" />
+            <div className="text-xs text-zinc-400">
+              {availablePerDay > 0
+                ? <>Podés gastar hasta <strong className="text-zinc-200">{formatCurrency(availablePerDay, currencySymbol)}</strong> por día para mantenerte dentro del presupuesto.</>
+                : <>El presupuesto ya fue consumido. Cualquier gasto adicional aumenta el desvío.</>}
+            </div>
+          </div>
+
+          {topCategory && (
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-950/50 px-4 py-3 flex items-start gap-3">
+              <TrendingUp className="w-4 h-4 text-orange-400 mt-0.5 shrink-0" />
+              <div className="text-xs text-zinc-400">
+                Tu categoría con mayor gasto concentra aproximadamente <strong className="text-zinc-200">{topCategoryShare.toFixed(0)}%</strong> del gasto del mes.
+              </div>
+            </div>
+          )}
         </div>
       )}
     </section>
