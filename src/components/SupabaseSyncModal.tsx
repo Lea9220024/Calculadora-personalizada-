@@ -21,10 +21,10 @@ const formatAuthError = (error: unknown) => {
 const checkSupabaseConnection = async () => {
   if (!supabaseUrl || !supabasePublishableKey) return { ok: false, detail: 'Faltan las variables VITE_SUPABASE_URL o VITE_SUPABASE_PUBLISHABLE_KEY.' };
   try {
-    const response = await fetch(`${supabaseUrl}/auth/v1/settings`, { headers: { apikey: supabasePublishableKey } });
+    const response = await fetch(`${supabaseUrl}/auth/v1/health`, { headers: { apikey: supabasePublishableKey } });
     const body = await response.text();
-    if (!response.ok) return { ok: false, detail: `Supabase respondió HTTP ${response.status}${body ? ` · ${body.slice(0, 160)}` : ' sin cuerpo de respuesta'}.` };
-    return { ok: true, detail: `Conexión OK · HTTP ${response.status}` };
+    if (!response.ok) return { ok: false, detail: `Supabase Auth respondió HTTP ${response.status}${body ? ` · ${body.slice(0, 160)}` : ' sin cuerpo de respuesta'}.` };
+    return { ok: true, detail: `Supabase Auth operativo · HTTP ${response.status}` };
   } catch (error) {
     return { ok: false, detail: `No se pudo conectar con Supabase desde este navegador: ${error instanceof Error ? error.message : String(error)}` };
   }
