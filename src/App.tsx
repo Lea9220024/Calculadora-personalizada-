@@ -120,33 +120,51 @@ export default function App() {
   }, [settings]);
 
   useEffect(() => {
-    let cancelled = false;
+    if (!supabase) return;
 
-    const loadCloudData = async () => {
-      if (!supabase) return;
+    let cancelled = false;
+    let loadingUserId: string | null = null;
+
+    const loadCloudData = async (userId: string) => {
+      if (cancelled || loadingUserId === userId) return;
+      loadingUserId = userId;
 
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user || cancelled) return;
-
-        const cloudData = await readUserDataFromSupabase(session.user.id);
+        const cloudData = await readUserDataFromSupabase(userId);
         if (cancelled) return;
 
-        // Supabase only becomes the active source after a complete successful read.
-        // localStorage remains the local fallback and backup.
+        // Una lectura completa y exitosa de Supabase es la fuente principal.
+        // localStorage queda intacto como respaldo/fallback si la nube no responde.
         setTransactions(cloudData.transactions);
         setCategories(cloudData.categories);
         setBudgets(cloudData.budgets);
         if (cloudData.settings) setSettings(cloudData.settings);
       } catch (error) {
         console.warn('No se pudieron cargar los datos desde Supabase. Se mantiene la copia local.', error);
+      } finally {
+        if (loadingUserId === userId) loadingUserId = null;
       }
     };
 
-    void loadCloudData();
+    const loadCurrentSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!cancelled && session?.user) {
+        await loadCloudData(session.user.id);
+      }
+    };
+
+    void loadCurrentSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
+      if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
+        void loadCloudData(session.user.id);
+      }
+    });
 
     return () => {
       cancelled = true;
+      authListener.subscription.unsubscribe();
     };
   }, []);
 
