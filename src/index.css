@@ -1,14 +1,19 @@
 @import "tailwindcss";
 
-/* C.R.E.A.M. — tema claro: fondo limpio y contraste alto. */
+/* C.R.E.A.M. — tema claro: superficies claras + contraste alto. */
 .theme-light body { background: #f4f4f5; color: #18181b; }
 .theme-light .bg-black { background-color: #f4f4f5 !important; }
 .theme-light .bg-zinc-950 { background-color: #ffffff !important; }
+.theme-light .bg-zinc-950\/40 { background-color: #fafafa !important; }
+.theme-light .bg-zinc-950\/60 { background-color: #fafafa !important; }
 .theme-light .bg-zinc-900,
-.theme-light .bg-zinc-900\/90 { background-color: #ffffff !important; }
+.theme-light .bg-zinc-900\/90,
+.theme-light .bg-zinc-900\/40 { background-color: #ffffff !important; }
 .theme-light .bg-zinc-900\/60 { background-color: #f4f4f5 !important; }
 .theme-light .bg-zinc-800 { background-color: #e4e4e7 !important; }
-.theme-light .hover\:bg-zinc-800:hover { background-color: #e4e4e7 !important; }
+.theme-light .bg-zinc-800\/60 { background-color: #f4f4f5 !important; }
+.theme-light .hover\:bg-zinc-800:hover,
+.theme-light .hover\:bg-zinc-800\/60:hover { background-color: #e4e4e7 !important; }
 .theme-light .hover\:bg-zinc-900\/60:hover { background-color: #e4e4e7 !important; }
 
 /* Paleta tipográfica de alto contraste para TODO el modo día. */
@@ -26,10 +31,12 @@
 .theme-light select { color: #18181b !important; }
 .theme-light input::placeholder,
 .theme-light textarea::placeholder { color: #71717a !important; opacity: 1; }
+.theme-light option { color: #18181b; background: #ffffff; }
 
 .theme-light .border-zinc-800 { border-color: #d4d4d8 !important; }
-.theme-light .border-zinc-800\/80 { border-color: rgba(212,214,216,.9) !important; }
+.theme-light .border-zinc-800\/80 { border-color: rgba(161,161,170,.75) !important; }
 .theme-light .border-zinc-700 { border-color: #a1a1aa !important; }
+.theme-light .divide-zinc-800\/80 > :not([hidden]) ~ :not([hidden]) { border-color: #d4d4d8 !important; }
 
 /* Contraste específico de las tarjetas principales. */
 .theme-light #card-income,
@@ -42,37 +49,29 @@
   box-shadow: 0 4px 16px rgba(24,24,27,.08) !important;
 }
 
-.theme-light #card-income .text-zinc-100,
-.theme-light #card-expenses .text-zinc-100,
-.theme-light #card-balance .text-zinc-100,
-.theme-light #card-budget .text-zinc-100,
-.theme-light #card-income .text-white,
-.theme-light #card-expenses .text-white,
-.theme-light #card-balance .text-white,
-.theme-light #card-budget .text-white { color: #18181b !important; }
-
-.theme-light #card-income .text-zinc-400,
-.theme-light #card-expenses .text-zinc-400,
-.theme-light #card-balance .text-zinc-400,
-.theme-light #card-budget .text-zinc-400,
-.theme-light #card-income .text-zinc-500,
-.theme-light #card-expenses .text-zinc-500,
-.theme-light #card-balance .text-zinc-500,
-.theme-light #card-budget .text-zinc-500 { color: #3f3f46 !important; }
+/* Contraste específico del listado de movimientos. */
+.theme-light [id^="tx-item-"] {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+}
+.theme-light [id^="tx-item-"] .text-zinc-100 { color: #18181b !important; }
+.theme-light [id^="tx-item-"] .text-zinc-300 { color: #3f3f46 !important; }
+.theme-light [id^="tx-item-"] .text-zinc-400 { color: #52525b !important; }
+.theme-light [id^="tx-item-"] .text-zinc-500 { color: #52525b !important; }
+.theme-light [id^="tx-item-"] .bg-zinc-900 { background-color: #ffffff !important; }
+.theme-light [id^="tx-item-"] .bg-zinc-800 { background-color: #e4e4e7 !important; }
 
 html, body, #root {
   min-height: 100%;
   width: 100%;
 }
-
 html { min-height: 100%; }
-body { margin: 0; overflow-x: hidden; }
+body { margin: 0; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
 
-/* La aplicación permite vertical y horizontal; no fija un ancho de teléfono. */
+/* La aplicación permite vertical y horizontal; no fija una orientación. */
 @media (orientation: landscape) {
   html, body, #root { min-width: 100vw; min-height: 100vh; }
 }
-
 @media (max-width: 1024px) {
   .max-w-7xl { max-width: 100%; }
 }
