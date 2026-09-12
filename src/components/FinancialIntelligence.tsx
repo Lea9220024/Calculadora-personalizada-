@@ -6,15 +6,25 @@ import { formatCurrency } from '../utils/formatters';
 interface FinancialIntelligenceProps {
   currentMonthKey: string;
   budgetTarget: number;
-  categoryTargets: Record<string, number>;
+  categoryTargets?: Record<string, number>;
   transactions: Transaction[];
-  categories: Category[];
+  categories?: Category[];
   currencySymbol: string;
 }
 
 const getMonthDays = (monthKey: string) => {
   const [year, month] = monthKey.split('-').map(Number);
   return new Date(year, month, 0).getDate();
+};
+
+const readLocalJson = <T,>(key: string, fallback: T): T => {
+  try {
+    if (typeof localStorage === 'undefined') return fallback;
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) as T : fallback;
+  } catch {
+    return fallback;
+  }
 };
 
 export const FinancialIntelligence: React.FC<FinancialIntelligenceProps> = ({
@@ -25,6 +35,10 @@ export const FinancialIntelligence: React.FC<FinancialIntelligenceProps> = ({
   categories,
   currencySymbol
 }) => {
+  const localCategories = categories || readLocalJson<Category[]>('mis_gastos_categories_v1', []);
+  const localBudgets = readLocalJson<Array<{ monthKey: string; totalTarget: number; categoryTargets: Record<string, number> }>>('mis_gastos_budgets_v1', []);
+  const resolvedCategoryTargets = categoryTargets || localBudgets.find(b => b.monthKey === currentMonthKey)?.categoryTargets || {};
+
   const [year, month] = currentMonthKey.split('-').map(Number);
   const now = new Date();
   const isCurrentMonth = now.getFullYear() === year && now.getMonth() + 1 === month;
@@ -62,8 +76,8 @@ export const FinancialIntelligence: React.FC<FinancialIntelligenceProps> = ({
 
   const categoryInsights = Object.entries(expenseByCategory)
     .map(([categoryId, spent]) => {
-      const category = categories.find(c => c.id === categoryId);
-      const target = categoryTargets[categoryId] || 0;
+      const category = localCategories.find(c => c.id === categoryId);
+      const target = resolvedCategoryTargets[categoryId] || 0;
       const deviation = target > 0 ? spent - target : 0;
       const percentage = target > 0 ? (spent / target) * 100 : 0;
       return { categoryId, name: category?.name || 'Sin categoría', spent, target, deviation, percentage };
