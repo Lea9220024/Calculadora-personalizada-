@@ -1,8 +1,9 @@
 import React, { useRef, useState } from 'react';
-import { AlertCircle, Check, FileSpreadsheet, ShieldCheck, Upload, X } from 'lucide-react';
+import { AlertCircle, Check, FileSpreadsheet, ShieldCheck, Upload, X, Sparkles } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Category, PaymentMethod, Transaction, TransactionType } from '../types';
 import { GradientIcon } from './GradientIcon';
+import { suggestCategory } from '../utils/autoCategorization';
 
 interface SafeImportModalProps {
   isOpen: boolean;
@@ -12,7 +13,7 @@ interface SafeImportModalProps {
   onImportTransactions: (transactions: Transaction[]) => void;
 }
 
-type PreviewRow = { tx: Transaction; duplicate: boolean; error?: string };
+type PreviewRow = { tx: Transaction; duplicate: boolean; error?: string; autoCategorized?: boolean };
 
 const normalize = (value: unknown) => String(value ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 const key = (value: unknown) => normalize(value).replace(/\s+/g, ' ');
@@ -65,7 +66,6 @@ const parsePaymentMethod = (value: unknown): PaymentMethod => {
 };
 
 const fingerprint = (tx: Transaction) => [tx.date, key(tx.title), tx.amount.toFixed(2), tx.type, tx.categoryId, tx.paymentMethod].join('|');
-
 const createId = () => `tx-import-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
 export const SafeImportModal: React.FC<SafeImportModalProps> = ({ isOpen, onClose, transactions, categories, onImportTransactions }) => {
@@ -89,6 +89,7 @@ export const SafeImportModal: React.FC<SafeImportModalProps> = ({ isOpen, onClos
       const type = parseType(findValue(row, ['Tipo', 'Type', 'Movimiento']));
       const categoryRaw = String(findValue(row, ['Categoría', 'Categoria', 'Category']) ?? '').trim();
       const category = categories.find(c => normalize(c.name) === normalize(categoryRaw) && (c.type === 'both' || c.type === type));
+      const suggestion = !category ? suggestCategory(title, String(findValue(row, ['Notas', 'Nota', 'Notes', 'Observaciones']) ?? '').trim(), type, categories, transactions) : null;
       const paymentMethod = parsePaymentMethod(findValue(row, ['Método de Pago', 'Metodo de Pago', 'Medio de Pago', 'Forma de Pago', 'Payment Method']));
       const notes = String(findValue(row, ['Notas', 'Nota', 'Notes', 'Observaciones']) ?? '').trim();
       const recurring = normalize(findValue(row, ['Recurrente', 'Recurring'])) === 'si' || normalize(findValue(row, ['Recurrente', 'Recurring'])) === 'true';
@@ -96,13 +97,13 @@ export const SafeImportModal: React.FC<SafeImportModalProps> = ({ isOpen, onClos
       if (!date) problems.push('fecha inválida');
       if (!title) problems.push('concepto vacío');
       if (amount === null || amount <= 0) problems.push('monto inválido');
-      if (!category) problems.push(categoryRaw ? `categoría no encontrada: ${categoryRaw}` : 'categoría faltante');
-      if (problems.length) return { tx: { id: `invalid-${index}`, title, amount: amount || 0, type, categoryId: category?.id || '', date: date || '', paymentMethod, notes, isRecurring: recurring, createdAt: new Date().toISOString() }, duplicate: false, error: problems.join(', ') };
-      const tx: Transaction = { id: createId(), title, amount: amount!, type, categoryId: category!.id, date: date!, paymentMethod, notes: notes || undefined, isRecurring: recurring, createdAt: new Date().toISOString() };
+      if (!category && !suggestion) problems.push(categoryRaw ? `categoría no encontrada: ${categoryRaw}` : 'categoría faltante y no se pudo inferir');
+      if (problems.length) return { tx: { id: `invalid-${index}`, title, amount: amount || 0, type, categoryId: category?.id || suggestion?.categoryId || '', date: date || '', paymentMethod, notes, isRecurring: recurring, createdAt: new Date().toISOString() }, duplicate: false, error: problems.join(', ') };
+      const tx: Transaction = { id: createId(), title, amount: amount!, type, categoryId: category?.id || suggestion!.categoryId, date: date!, paymentMethod, notes: notes || undefined, isRecurring: recurring, createdAt: new Date().toISOString() };
       const fp = fingerprint(tx);
       const duplicate = existing.has(fp) || seen.has(fp);
       seen.add(fp);
-      return { tx, duplicate };
+      return { tx, duplicate, autoCategorized: !category && Boolean(suggestion) };
     });
     setPreview(result);
   };
@@ -141,11 +142,12 @@ export const SafeImportModal: React.FC<SafeImportModalProps> = ({ isOpen, onClos
   const validNew = preview.filter(r => !r.error && !r.duplicate).map(r => r.tx);
   const duplicates = preview.filter(r => r.duplicate).length;
   const errors = preview.filter(r => r.error).length;
+  const autoCategorized = preview.filter(r => r.autoCategorized).length;
 
   const confirmImport = () => {
     if (!validNew.length) return;
     onImportTransactions(validNew);
-    setSuccess(`${validNew.length} movimientos nuevos agregados. ${duplicates} duplicados y ${errors} filas con errores quedaron fuera.`);
+    setSuccess(`${validNew.length} movimientos nuevos agregados. ${autoCategorized} categorizados automáticamente. ${duplicates} duplicados y ${errors} errores quedaron fuera.`);
     setPreview([]);
   };
 
@@ -158,6 +160,7 @@ export const SafeImportModal: React.FC<SafeImportModalProps> = ({ isOpen, onClos
         </div>
         <div className="p-6 overflow-y-auto space-y-4">
           <div className="p-3 bg-orange-500/10 text-orange-200 rounded-xl text-xs border border-orange-500/20 flex gap-2"><GradientIcon icon={ShieldCheck} className="w-4 h-4 shrink-0" /><span><b>Protección de datos:</b> esta importación solo agrega movimientos nuevos. Nunca reemplaza ni elimina tus movimientos existentes.</span></div>
+          <div className="p-3 bg-violet-500/10 text-violet-200 rounded-xl text-xs border border-violet-500/20 flex gap-2"><Sparkles className="w-4 h-4 shrink-0" /><span><b>Categorización automática:</b> si el archivo no trae una categoría válida, C.R.E.A.M. la infiere usando el concepto, notas y tus movimientos anteriores.</span></div>
           {error && <div className="p-3 bg-rose-500/10 text-rose-300 rounded-xl text-xs font-semibold flex gap-2 border border-rose-500/30"><AlertCircle className="w-4 h-4 shrink-0" />{error}</div>}
           {success && <div className="p-3 bg-emerald-500/10 text-emerald-300 rounded-xl text-xs font-semibold flex gap-2 border border-emerald-500/30"><Check className="w-4 h-4 shrink-0" />{success}</div>}
 
@@ -173,13 +176,14 @@ export const SafeImportModal: React.FC<SafeImportModalProps> = ({ isOpen, onClos
           </> : <>
             <div className="flex flex-wrap gap-2 text-xs">
               <span className="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-300">{validNew.length} nuevos</span>
+              <span className="px-3 py-1.5 rounded-lg bg-violet-500/10 text-violet-300">{autoCategorized} auto-categorizados</span>
               <span className="px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-300">{duplicates} duplicados</span>
               <span className="px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-300">{errors} errores</span>
             </div>
             <p className="text-xs text-zinc-400">Archivo: <span className="text-zinc-200">{fileName}</span> · Se encontraron {preview.length} filas.</p>
             <div className="rounded-2xl border border-zinc-800 overflow-hidden">
               <div className="max-h-80 overflow-auto">
-                <table className="w-full text-left text-[11px]"><thead className="sticky top-0 bg-zinc-950 text-zinc-400"><tr><th className="p-3">Estado</th><th className="p-3">Fecha</th><th className="p-3">Concepto</th><th className="p-3 text-right">Monto</th></tr></thead><tbody>{preview.slice(0, 100).map((row, i) => <tr key={i} className="border-t border-zinc-800"><td className="p-3">{row.error ? <span className="text-rose-400">Error</span> : row.duplicate ? <span className="text-zinc-500">Duplicado</span> : <span className="text-emerald-400">Nuevo</span>}</td><td className="p-3 text-zinc-300">{row.tx.date || '—'}</td><td className="p-3 text-zinc-200"><div>{row.tx.title || '—'}</div>{row.error && <div className="text-rose-400 mt-1">{row.error}</div>}</td><td className="p-3 text-right text-zinc-200">{row.tx.amount ? row.tx.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—'}</td></tr>)}</tbody></table>
+                <table className="w-full text-left text-[11px]"><thead className="sticky top-0 bg-zinc-950 text-zinc-400"><tr><th className="p-3">Estado</th><th className="p-3">Fecha</th><th className="p-3">Concepto</th><th className="p-3">Categoría</th><th className="p-3 text-right">Monto</th></tr></thead><tbody>{preview.slice(0, 100).map((row, i) => <tr key={i} className="border-t border-zinc-800"><td className="p-3">{row.error ? <span className="text-rose-400">Error</span> : row.duplicate ? <span className="text-zinc-500">Duplicado</span> : <span className="text-emerald-400">Nuevo</span>}</td><td className="p-3 text-zinc-300">{row.tx.date || '—'}</td><td className="p-3 text-zinc-200"><div>{row.tx.title || '—'}</div>{row.error && <div className="text-rose-400 mt-1">{row.error}</div>}</td><td className="p-3 text-zinc-300">{categories.find(c => c.id === row.tx.categoryId)?.name || '—'}{row.autoCategorized && <span className="ml-1 text-violet-300">✦</span>}</td><td className="p-3 text-right text-zinc-200">{row.tx.amount ? row.tx.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—'}</td></tr>)}</tbody></table>
               </div>
               {preview.length > 100 && <p className="p-2 text-center text-[10px] text-zinc-500 border-t border-zinc-800">Mostrando las primeras 100 filas. El resumen contempla todas.</p>}
             </div>
