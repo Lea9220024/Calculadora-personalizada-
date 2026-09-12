@@ -13,25 +13,22 @@ export const GlobalGradientDefs: React.FC = () => {
   return (
     <svg style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', opacity: 0, pointerEvents: 'none' }} aria-hidden="true">
       <defs>
-        {/* Main warm yellow to orange to red gradient matching the reference image */}
-        <linearGradient id="warm-gradient" x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#facc15" />
-          <stop offset="50%" stopColor="#f97316" />
-          <stop offset="100%" stopColor="#ef4444" />
+        <linearGradient id="cool-gradient" x1="0%" y1="100%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#34d399" />
+          <stop offset="50%" stopColor="#2dd4bf" />
+          <stop offset="100%" stopColor="#22d3ee" />
         </linearGradient>
 
-        {/* Horizontal warm gradient variation */}
-        <linearGradient id="warm-gradient-h" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#fbbf24" />
-          <stop offset="60%" stopColor="#f97316" />
-          <stop offset="100%" stopColor="#ea580c" />
+        <linearGradient id="cool-gradient-h" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#6ee7b7" />
+          <stop offset="60%" stopColor="#2dd4bf" />
+          <stop offset="100%" stopColor="#22d3ee" />
         </linearGradient>
 
-        {/* High contrast bright gradient */}
-        <linearGradient id="warm-gradient-bright" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#fde047" />
-          <stop offset="50%" stopColor="#fb923c" />
-          <stop offset="100%" stopColor="#f43f5e" />
+        <linearGradient id="cool-gradient-bright" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#a7f3d0" />
+          <stop offset="50%" stopColor="#5eead4" />
+          <stop offset="100%" stopColor="#67e8f9" />
         </linearGradient>
       </defs>
     </svg>
@@ -43,7 +40,7 @@ export const GradientIcon: React.FC<GradientIconProps> = ({
   icon: IconComponentProp,
   className = 'w-5 h-5',
   strokeWidth = 2.2,
-  gradientId = 'warm-gradient'
+  gradientId = 'cool-gradient'
 }) => {
   const instanceId = useId().replace(/[:]/g, '');
   const localGradId = `${gradientId}-${instanceId}`;
@@ -69,12 +66,11 @@ export const GradientIcon: React.FC<GradientIconProps> = ({
     >
       <defs>
         <linearGradient id={localGradId} x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#facc15" />
-          <stop offset="50%" stopColor="#f97316" />
-          <stop offset="100%" stopColor="#ef4444" />
+          <stop offset="0%" stopColor="#34d399" />
+          <stop offset="50%" stopColor="#2dd4bf" />
+          <stop offset="100%" stopColor="#22d3ee" />
         </linearGradient>
       </defs>
     </IconToRender>
   );
 };
-
