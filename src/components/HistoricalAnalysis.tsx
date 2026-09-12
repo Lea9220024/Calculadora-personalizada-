@@ -43,9 +43,6 @@ export const HistoricalAnalysis: React.FC<HistoricalAnalysisProps> = ({ transact
   const categoryName = (id: string) => categories.find(c => c.id === id)?.name || id;
   const maxMonthlyValue = Math.max(1, ...monthly.flatMap(m => [m.income, m.expense]));
 
-  // 5.18: use the latest month with real movements as the comparison month.
-  // This keeps the analysis correct when historical data is loaded later and
-  // avoids depending on the device calendar date.
   const currentMonth = activeMonths[activeMonths.length - 1];
   const comparisonMonthKey = currentMonth?.key || '';
   const historicalMonths = activeMonths.filter(m => m.key !== comparisonMonthKey);
@@ -75,6 +72,48 @@ export const HistoricalAnalysis: React.FC<HistoricalAnalysisProps> = ({ transact
     .sort((a, b) => (b.current - b.previous) - (a.current - a.previous));
   const biggestCategoryIncrease = categoryChanges.find(c => c.current > c.previous);
 
+  // 5.19: detect sustained three-month category and total-expense trends.
+  const trendCandidates = Object.keys(categoryTotals).map(id => {
+    const values = monthly.map(m => yearTransactions
+      .filter(tx => tx.type === 'expense' && tx.categoryId === id && monthKey(tx.date) === m.key)
+      .reduce((sum, tx) => sum + tx.amount, 0));
+    return { id, values };
+  });
+
+  const categoryTrends = trendCandidates.flatMap(({ id, values }) => {
+    const results: { id: string; direction: 'up' | 'down'; change: number; months: string[] }[] = [];
+    for (let i = 2; i < values.length; i++) {
+      const window = values.slice(i - 2, i + 1);
+      if (window.every(v => v > 0) && window[0] < window[1] && window[1] < window[2]) {
+        results.push({ id, direction: 'up', change: ((window[2] - window[0]) / window[0]) * 100, months: monthly.slice(i - 2, i + 1).map(m => m.label) });
+      }
+      if (window.every(v => v > 0) && window[0] > window[1] && window[1] > window[2]) {
+        results.push({ id, direction: 'down', change: ((window[0] - window[2]) / window[0]) * 100, months: monthly.slice(i - 2, i + 1).map(m => m.label) });
+      }
+    }
+    return results;
+  });
+
+  const latestTrendByCategory = new Map<string, typeof categoryTrends[number]>();
+  categoryTrends.forEach(trend => latestTrendByCategory.set(trend.id, trend));
+  const detectedTrends = [...latestTrendByCategory.values()]
+    .filter(t => t.change >= 5)
+    .sort((a, b) => b.change - a.change)
+    .slice(0, 4);
+
+  const expenseMonthlyValues = monthly.map(m => m.expense);
+  const expenseTrendWindows: { direction: 'up' | 'down'; change: number; months: string[] }[] = [];
+  for (let i = 2; i < expenseMonthlyValues.length; i++) {
+    const window = expenseMonthlyValues.slice(i - 2, i + 1);
+    if (window.every(v => v > 0) && window[0] < window[1] && window[1] < window[2]) {
+      expenseTrendWindows.push({ direction: 'up', change: ((window[2] - window[0]) / window[0]) * 100, months: monthly.slice(i - 2, i + 1).map(m => m.label) });
+    }
+    if (window.every(v => v > 0) && window[0] > window[1] && window[1] > window[2]) {
+      expenseTrendWindows.push({ direction: 'down', change: ((window[0] - window[2]) / window[0]) * 100, months: monthly.slice(i - 2, i + 1).map(m => m.label) });
+    }
+  }
+  const latestExpenseTrend = expenseTrendWindows.at(-1);
+
   const comparisonTone = (diff: number, inverse = false) => {
     const positive = inverse ? diff < -5 : diff > 5;
     const negative = inverse ? diff > 5 : diff < -5;
@@ -90,21 +129,14 @@ export const HistoricalAnalysis: React.FC<HistoricalAnalysisProps> = ({ transact
     <section className="mt-6 rounded-3xl border border-zinc-800 bg-zinc-900/90 p-5 shadow-md text-zinc-100">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-orange-400" strokeWidth={2.4} />
-            <h2 className="text-lg font-black text-white">Inteligencia histórica</h2>
-          </div>
+          <div className="flex items-center gap-2"><BarChart3 className="w-5 h-5 text-orange-400" strokeWidth={2.4} /><h2 className="text-lg font-black text-white">Inteligencia histórica</h2></div>
           <p className="text-xs text-zinc-400 mt-1">Lectura anual de ingresos, gastos, ahorro y patrones de consumo. Se alimenta automáticamente de todos tus movimientos.</p>
         </div>
         <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 px-3 py-2 text-xs text-zinc-400">Año analizado: <strong className="text-white">{selectedYear}</strong></div>
       </div>
 
       {yearTransactions.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/50 p-8 text-center">
-          <WalletCards className="w-8 h-8 mx-auto text-zinc-600 mb-2" />
-          <p className="text-sm font-bold text-zinc-300">Todavía no hay movimientos históricos para analizar.</p>
-          <p className="text-xs text-zinc-500 mt-1">Cuando cargues tus movimientos del año, este módulo se completará automáticamente.</p>
-        </div>
+        <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/50 p-8 text-center"><WalletCards className="w-8 h-8 mx-auto text-zinc-600 mb-2" /><p className="text-sm font-bold text-zinc-300">Todavía no hay movimientos históricos para analizar.</p><p className="text-xs text-zinc-500 mt-1">Cuando cargues tus movimientos del año, este módulo se completará automáticamente.</p></div>
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
@@ -116,46 +148,25 @@ export const HistoricalAnalysis: React.FC<HistoricalAnalysisProps> = ({ transact
 
           <div className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
             <div className="flex items-center gap-2 mb-4"><BarChart3 className="w-4 h-4 text-orange-400" /><h3 className="text-sm font-black text-white">Comparación inteligente</h3></div>
-            {!currentMonth || !historicalMonths.length ? (
-              <div className="text-xs text-zinc-500">Necesito al menos un mes histórico además del mes actual para generar una comparación real.</div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className={`rounded-xl border border-zinc-800 ${expenseTone.bg} p-4`}>
-                  <div className="flex items-center justify-between"><span className="text-[10px] uppercase tracking-wider font-bold text-zinc-500">Gasto del mes vs. promedio</span><expenseTone.Icon className={`w-4 h-4 ${expenseTone.text}`} /></div>
-                  <div className="mt-2 flex items-baseline gap-2"><span className="text-lg font-black text-white">{formatCurrency(currentMonth.expense, currencySymbol)}</span><span className={`text-xs font-black ${expenseTone.text}`}>{expenseDiff >= 0 ? '+' : ''}{expenseDiff.toFixed(1)}%</span></div>
-                  <p className="text-[11px] text-zinc-500 mt-1">Promedio de los meses históricos con movimientos: {formatCurrency(historicalAvgExpense, currencySymbol)}</p>
-                </div>
-                <div className={`rounded-xl border border-zinc-800 ${incomeTone.bg} p-4`}>
-                  <div className="flex items-center justify-between"><span className="text-[10px] uppercase tracking-wider font-bold text-zinc-500">Ingreso del mes vs. promedio</span><incomeTone.Icon className={`w-4 h-4 ${incomeTone.text}`} /></div>
-                  <div className="mt-2 flex items-baseline gap-2"><span className="text-lg font-black text-white">{formatCurrency(currentMonth.income, currencySymbol)}</span><span className={`text-xs font-black ${incomeTone.text}`}>{incomeDiff >= 0 ? '+' : ''}{incomeDiff.toFixed(1)}%</span></div>
-                  <p className="text-[11px] text-zinc-500 mt-1">Promedio histórico: {formatCurrency(historicalAvgIncome, currencySymbol)}</p>
-                </div>
-              </div>
-            )}
+            {!currentMonth || !historicalMonths.length ? <div className="text-xs text-zinc-500">Necesito al menos un mes histórico además del mes actual para generar una comparación real.</div> : <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className={`rounded-xl border border-zinc-800 ${expenseTone.bg} p-4`}><div className="flex items-center justify-between"><span className="text-[10px] uppercase tracking-wider font-bold text-zinc-500">Gasto del mes vs. promedio</span><expenseTone.Icon className={`w-4 h-4 ${expenseTone.text}`} /></div><div className="mt-2 flex items-baseline gap-2"><span className="text-lg font-black text-white">{formatCurrency(currentMonth.expense, currencySymbol)}</span><span className={`text-xs font-black ${expenseTone.text}`}>{expenseDiff >= 0 ? '+' : ''}{expenseDiff.toFixed(1)}%</span></div><p className="text-[11px] text-zinc-500 mt-1">Promedio de los meses históricos con movimientos: {formatCurrency(historicalAvgExpense, currencySymbol)}</p></div>
+              <div className={`rounded-xl border border-zinc-800 ${incomeTone.bg} p-4`}><div className="flex items-center justify-between"><span className="text-[10px] uppercase tracking-wider font-bold text-zinc-500">Ingreso del mes vs. promedio</span><incomeTone.Icon className={`w-4 h-4 ${incomeTone.text}`} /></div><div className="mt-2 flex items-baseline gap-2"><span className="text-lg font-black text-white">{formatCurrency(currentMonth.income, currencySymbol)}</span><span className={`text-xs font-black ${incomeTone.text}`}>{incomeDiff >= 0 ? '+' : ''}{incomeDiff.toFixed(1)}%</span></div><p className="text-[11px] text-zinc-500 mt-1">Promedio histórico: {formatCurrency(historicalAvgIncome, currencySymbol)}</p></div>
+            </div>}
           </div>
 
-          {biggestCategoryIncrease && (
-            <div className="mt-3 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
-              <div className="flex items-center gap-2"><TrendingUp className="w-4 h-4 text-orange-400" /><h3 className="text-sm font-black text-white">Tendencia detectada</h3></div>
-              <p className="text-xs text-zinc-400 mt-2">Este mes, <strong className="text-white">{categoryName(biggestCategoryIncrease.id)}</strong> aumentó <strong className="text-orange-400">{formatCurrency(biggestCategoryIncrease.current - biggestCategoryIncrease.previous, currencySymbol)}</strong> respecto del mes anterior.</p>
+          {(detectedTrends.length > 0 || latestExpenseTrend) && <div className="mt-3 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+            <div className="flex items-center gap-2"><TrendingUp className="w-4 h-4 text-orange-400" /><h3 className="text-sm font-black text-white">Tendencias de 3 meses</h3></div>
+            <div className="mt-3 space-y-2">
+              {detectedTrends.map(trend => <div key={`${trend.id}-${trend.direction}-${trend.months.join('-')}`} className="flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-950/70 p-3"><div className={`mt-0.5 rounded-lg p-1.5 ${trend.direction === 'up' ? 'bg-orange-500/10 text-orange-400' : 'bg-zinc-800 text-zinc-300'}`}>{trend.direction === 'up' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}</div><div><p className="text-xs font-bold text-zinc-200">{categoryName(trend.id)} {trend.direction === 'up' ? 'viene aumentando' : 'viene disminuyendo'} durante {trend.months.join(', ')}.</p><p className="text-[11px] text-zinc-500 mt-0.5">Variación acumulada: <span className={trend.direction === 'up' ? 'text-orange-400' : 'text-zinc-300'}>{trend.direction === 'up' ? '+' : '-'}{trend.change.toFixed(1)}%</span></p></div></div>)}
+              {latestExpenseTrend && <div className="flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-950/70 p-3"><div className="mt-0.5 rounded-lg bg-zinc-800 p-1.5 text-zinc-300">{latestExpenseTrend.direction === 'up' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}</div><div><p className="text-xs font-bold text-zinc-200">El gasto total {latestExpenseTrend.direction === 'up' ? 'viene aumentando' : 'viene disminuyendo'} durante {latestExpenseTrend.months.join(', ')}.</p><p className="text-[11px] text-zinc-500 mt-0.5">Variación acumulada: {latestExpenseTrend.direction === 'up' ? '+' : '-'}{latestExpenseTrend.change.toFixed(1)}%</p></div></div>}
             </div>
-          )}
+          </div>}
+
+          {biggestCategoryIncrease && <div className="mt-3 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4"><div className="flex items-center gap-2"><TrendingUp className="w-4 h-4 text-orange-400" /><h3 className="text-sm font-black text-white">Tendencia detectada</h3></div><p className="text-xs text-zinc-400 mt-2">Este mes, <strong className="text-white">{categoryName(biggestCategoryIncrease.id)}</strong> aumentó <strong className="text-orange-400">{formatCurrency(biggestCategoryIncrease.current - biggestCategoryIncrease.previous, currencySymbol)}</strong> respecto del mes anterior.</p></div>}
 
           <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
-              <div className="flex items-center gap-2 mb-4"><TrendingUp className="w-4 h-4 text-orange-400" /><h3 className="text-sm font-black text-white">Evolución mensual</h3></div>
-              <div className="space-y-3">{monthly.map(m => <div key={m.key} className="grid grid-cols-[32px_1fr_1fr] items-center gap-2"><span className="text-[10px] font-bold text-zinc-500">{m.label}</span><div className="h-2 rounded-full bg-zinc-800 overflow-hidden" title={`Ingresos: ${formatCurrency(m.income, currencySymbol)}`}><div className="h-full bg-orange-500 rounded-full" style={{ width: `${(m.income / maxMonthlyValue) * 100}%` }} /></div><div className="h-2 rounded-full bg-zinc-800 overflow-hidden" title={`Gastos: ${formatCurrency(m.expense, currencySymbol)}`}><div className="h-full bg-rose-500 rounded-full" style={{ width: `${(m.expense / maxMonthlyValue) * 100}%` }} /></div></div>)}</div>
-              <div className="mt-3 flex gap-4 text-[10px] text-zinc-500"><span><i className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1" />Ingresos</span><span><i className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1" />Gastos</span></div>
-            </div>
-
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
-              <div className="flex items-center gap-2 mb-4"><TrendingDown className="w-4 h-4 text-rose-400" /><h3 className="text-sm font-black text-white">Dónde mirar primero</h3></div>
-              <div className="space-y-3">
-                <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3"><div className="text-[10px] uppercase tracking-wider font-bold text-zinc-500">Mes de mayor gasto</div><div className="mt-1 text-sm font-black text-zinc-100">{highestExpenseMonth?.label}</div><div className="text-xs text-rose-400 font-bold mt-0.5">{formatCurrency(highestExpenseMonth?.expense || 0, currencySymbol)}</div></div>
-                <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3"><div className="text-[10px] uppercase tracking-wider font-bold text-zinc-500">Mes de mayor ingreso</div><div className="mt-1 text-sm font-black text-zinc-100">{highestIncomeMonth?.label}</div><div className="text-xs text-orange-400 font-bold mt-0.5">{formatCurrency(highestIncomeMonth?.income || 0, currencySymbol)}</div></div>
-                <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3"><div className="text-[10px] uppercase tracking-wider font-bold text-zinc-500">Categorías con mayor peso</div><div className="mt-2 space-y-2">{topCategories.length === 0 ? <span className="text-xs text-zinc-500">Sin gastos categorizados.</span> : topCategories.map(([id, amount], index) => <div key={id} className="flex items-center justify-between text-xs"><span className="text-zinc-400">#{index + 1} {categoryName(id)}</span><span className="font-black text-zinc-200">{formatCurrency(amount, currencySymbol)}</span></div>)}</div></div>
-              </div>
-            </div>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4"><div className="flex items-center gap-2 mb-4"><TrendingUp className="w-4 h-4 text-orange-400" /><h3 className="text-sm font-black text-white">Evolución mensual</h3></div><div className="space-y-3">{monthly.map(m => <div key={m.key} className="grid grid-cols-[32px_1fr_1fr] items-center gap-2"><span className="text-[10px] font-bold text-zinc-500">{m.label}</span><div className="h-2 rounded-full bg-zinc-800 overflow-hidden" title={`Ingresos: ${formatCurrency(m.income, currencySymbol)}`}><div className="h-full bg-orange-500 rounded-full" style={{ width: `${(m.income / maxMonthlyValue) * 100}%` }} /></div><div className="h-2 rounded-full bg-zinc-800 overflow-hidden" title={`Gastos: ${formatCurrency(m.expense, currencySymbol)}`}><div className="h-full bg-rose-500 rounded-full" style={{ width: `${(m.expense / maxMonthlyValue) * 100}%` }} /></div></div>)}</div><div className="mt-3 flex gap-4 text-[10px] text-zinc-500"><span><i className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1" />Ingresos</span><span><i className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1" />Gastos</span></div></div>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4"><div className="flex items-center gap-2 mb-4"><TrendingDown className="w-4 h-4 text-rose-400" /><h3 className="text-sm font-black text-white">Dónde mirar primero</h3></div><div className="space-y-3"><div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3"><div className="text-[10px] uppercase tracking-wider font-bold text-zinc-500">Mes de mayor gasto</div><div className="mt-1 text-sm font-black text-zinc-100">{highestExpenseMonth?.label}</div><div className="text-xs text-rose-400 font-bold mt-0.5">{formatCurrency(highestExpenseMonth?.expense || 0, currencySymbol)}</div></div><div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3"><div className="text-[10px] uppercase tracking-wider font-bold text-zinc-500">Mes de mayor ingreso</div><div className="mt-1 text-sm font-black text-zinc-100">{highestIncomeMonth?.label}</div><div className="text-xs text-orange-400 font-bold mt-0.5">{formatCurrency(highestIncomeMonth?.income || 0, currencySymbol)}</div></div><div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3"><div className="text-[10px] uppercase tracking-wider font-bold text-zinc-500">Categorías con mayor peso</div><div className="mt-2 space-y-2">{topCategories.length === 0 ? <span className="text-xs text-zinc-500">Sin gastos categorizados.</span> : topCategories.map(([id, amount], index) => <div key={id} className="flex items-center justify-between text-xs"><span className="text-zinc-400">#{index + 1} {categoryName(id)}</span><span className="font-black text-zinc-200">{formatCurrency(amount, currencySymbol)}</span></div>)}</div></div></div></div>
           </div>
         </>
       )}
