@@ -1,13 +1,13 @@
 {
   "id": "/",
-  "name": "Calculadora Personal",
-  "short_name": "Calculadora",
-  "description": "Tu calculadora personal.",
+  "name": "C.R.E.A.M. — Finanzas Personales",
+  "short_name": "C.R.E.A.M.",
+  "description": "Control financiero personal.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#ffffff",
+  "orientation": "any",
+  "background_color": "#000000",
   "theme_color": "#111827",
   "prefer_related_applications": false,
   "icons": [
