@@ -6,6 +6,18 @@ import { AppSettings, Category, MonthlyBudget, Transaction } from '../types';
 
 type Props = { isOpen: boolean; onClose: () => void; transactions: Transaction[]; categories: Category[]; budgets: MonthlyBudget[]; settings: AppSettings; };
 
+const formatAuthError = (error: unknown) => {
+  if (error instanceof Error) {
+    const details = error as Error & { status?: number; code?: string; name?: string };
+    const parts = [details.message];
+    if (details.status) parts.push(`HTTP ${details.status}`);
+    if (details.code) parts.push(`código: ${details.code}`);
+    if (details.name && details.name !== 'Error') parts.push(`tipo: ${details.name}`);
+    return parts.join(' · ');
+  }
+  return `Error inesperado: ${String(error)}`;
+};
+
 export const SupabaseSyncModal: React.FC<Props> = ({ isOpen, onClose, transactions, categories, budgets, settings }) => {
   const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false); const [message, setMessage] = useState(''); const [error, setError] = useState('');
@@ -21,9 +33,15 @@ export const SupabaseSyncModal: React.FC<Props> = ({ isOpen, onClose, transactio
   const handleAuth = async () => {
     if (!supabase) { setError('Supabase todavía no está configurado en este entorno.'); return; }
     setLoading(true); setError(''); setMessage('');
-    try { const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password }); if (authError) throw authError; setUserId(data.user?.id ?? null); setMessage('Sesión iniciada correctamente.'); }
-    catch (e) { setError(e instanceof Error ? e.message : 'No se pudo iniciar sesión.'); }
-    finally { setLoading(false); }
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (authError) throw authError;
+      setUserId(data.user?.id ?? null);
+      setMessage('Sesión iniciada correctamente.');
+    } catch (e) {
+      console.error('Supabase Auth error:', e);
+      setError(formatAuthError(e));
+    } finally { setLoading(false); }
   };
 
   const handleMigration = async () => {
