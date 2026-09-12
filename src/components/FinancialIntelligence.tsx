@@ -1,12 +1,14 @@
 import React from 'react';
-import { Activity, AlertTriangle, CalendarClock, CheckCircle2, Gauge, Lightbulb, TrendingUp } from 'lucide-react';
-import { Transaction } from '../types';
+import { Activity, AlertTriangle, CalendarClock, CheckCircle2, Gauge, Lightbulb, TrendingDown, TrendingUp } from 'lucide-react';
+import { Category, Transaction } from '../types';
 import { formatCurrency } from '../utils/formatters';
 
 interface FinancialIntelligenceProps {
   currentMonthKey: string;
   budgetTarget: number;
+  categoryTargets: Record<string, number>;
   transactions: Transaction[];
+  categories: Category[];
   currencySymbol: string;
 }
 
@@ -18,7 +20,9 @@ const getMonthDays = (monthKey: string) => {
 export const FinancialIntelligence: React.FC<FinancialIntelligenceProps> = ({
   currentMonthKey,
   budgetTarget,
+  categoryTargets,
   transactions,
+  categories,
   currencySymbol
 }) => {
   const [year, month] = currentMonthKey.split('-').map(Number);
@@ -52,8 +56,24 @@ export const FinancialIntelligence: React.FC<FinancialIntelligenceProps> = ({
     acc[tx.categoryId] = (acc[tx.categoryId] || 0) + tx.amount;
     return acc;
   }, {});
+
   const topCategory = Object.entries(expenseByCategory).sort((a, b) => b[1] - a[1])[0];
   const topCategoryShare = totalSpent > 0 && topCategory ? (topCategory[1] / totalSpent) * 100 : 0;
+
+  const categoryInsights = Object.entries(expenseByCategory)
+    .map(([categoryId, spent]) => {
+      const category = categories.find(c => c.id === categoryId);
+      const target = categoryTargets[categoryId] || 0;
+      const deviation = target > 0 ? spent - target : 0;
+      const percentage = target > 0 ? (spent / target) * 100 : 0;
+      return { categoryId, name: category?.name || 'Sin categoría', spent, target, deviation, percentage };
+    })
+    .sort((a, b) => b.deviation - a.deviation);
+
+  const biggestDeviation = categoryInsights.find(item => item.target > 0 && item.deviation > 0);
+  const bestControlled = [...categoryInsights]
+    .filter(item => item.target > 0 && item.spent <= item.target)
+    .sort((a, b) => (a.spent / a.target) - (b.spent / b.target))[0];
 
   const metricCards = [
     {
@@ -87,7 +107,7 @@ export const FinancialIntelligence: React.FC<FinancialIntelligenceProps> = ({
       icon: Gauge,
       label: 'Ritmo vs. objetivo',
       value: budgetTarget > 0
-        ? `${Math.abs(pacePercent).toFixed(0)}% ${pacePercent > 0 ? 'por encima' : pacePercent < 0 ? 'por debajo' : 'en línea'}`
+        ? `${Math.abs(pacePercent).toFixed(0)}% ${pacePercent > 2 ? 'por encima' : pacePercent < -2 ? 'por debajo' : 'en línea'}`
         : 'Sin referencia',
       detail: budgetTarget > 0 ? 'Comparado con el avance ideal del mes' : 'Definí un presupuesto global',
       tone: pacePercent > 2 ? 'text-rose-400' : 'text-orange-400'
@@ -118,7 +138,7 @@ export const FinancialIntelligence: React.FC<FinancialIntelligenceProps> = ({
           <h2 className="text-lg font-black text-white">Inteligencia financiera</h2>
         </div>
         <p className="text-xs text-zinc-400">
-          El presupuesto ahora interpreta tu comportamiento y te avisa cuando el ritmo de gasto requiere atención.
+          El presupuesto interpreta tu comportamiento y te señala dónde prestar atención.
         </p>
       </div>
 
@@ -164,6 +184,71 @@ export const FinancialIntelligence: React.FC<FinancialIntelligenceProps> = ({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {categoryInsights.length > 0 && (
+        <div className="mt-5 pt-5 border-t border-zinc-800">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-sm font-black text-white">Dónde ajustar</h3>
+              <p className="text-[11px] text-zinc-500">Comparación entre gasto real y objetivo por categoría.</p>
+            </div>
+            {biggestDeviation && (
+              <span className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Mayor desvío</span>
+            )}
+          </div>
+
+          <div className="space-y-2.5">
+            {categoryInsights.slice(0, 5).map(item => {
+              const ratio = item.target > 0 ? Math.min(100, item.percentage) : 0;
+              const over = item.target > 0 && item.spent > item.target;
+              return (
+                <div key={item.categoryId} className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs font-bold text-zinc-200 truncate">{item.name}</span>
+                    <div className="text-right shrink-0">
+                      <span className={`text-xs font-black ${over ? 'text-rose-400' : 'text-orange-400'}`}>
+                        {formatCurrency(item.spent, currencySymbol)}
+                      </span>
+                      {item.target > 0 && <span className="text-[10px] text-zinc-500"> / {formatCurrency(item.target, currencySymbol)}</span>}
+                    </div>
+                  </div>
+                  {item.target > 0 ? (
+                    <>
+                      <div className="mt-2 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                        <div className={`h-full rounded-full ${over ? 'bg-rose-500' : 'bg-orange-500'}`} style={{ width: `${ratio}%` }} />
+                      </div>
+                      <div className="mt-1.5 flex justify-between text-[10px] text-zinc-500">
+                        <span>{item.percentage.toFixed(0)}% del objetivo</span>
+                        <span className={over ? 'text-rose-400 font-bold' : 'text-zinc-400'}>
+                          {over ? `+${formatCurrency(item.deviation, currencySymbol)}` : `${formatCurrency(Math.max(0, item.target - item.spent), currencySymbol)} disponibles`}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="mt-1.5 text-[10px] text-zinc-500">Sin objetivo definido para esta categoría.</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {biggestDeviation ? (
+            <div className="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/5 px-3 py-2 flex items-center gap-2">
+              <TrendingDown className="w-4 h-4 text-rose-400 shrink-0" />
+              <span className="text-[11px] text-zinc-400">
+                El principal desvío está en <strong className="text-zinc-200">{biggestDeviation.name}</strong>: llevás <strong className="text-rose-300">{formatCurrency(biggestDeviation.deviation, currencySymbol)}</strong> por encima del objetivo.
+              </span>
+            </div>
+          ) : bestControlled ? (
+            <div className="mt-3 rounded-xl border border-orange-500/20 bg-orange-500/5 px-3 py-2 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-orange-400 shrink-0" />
+              <span className="text-[11px] text-zinc-400">
+                Buen control en <strong className="text-zinc-200">{bestControlled.name}</strong>: estás usando solo <strong className="text-zinc-200">{bestControlled.percentage.toFixed(0)}%</strong> de su objetivo.
+              </span>
+            </div>
+          ) : null}
         </div>
       )}
     </section>
