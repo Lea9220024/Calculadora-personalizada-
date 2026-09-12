@@ -1,4 +1,4 @@
-import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
 export type SupabaseRealtimePayload = RealtimePostgresChangesPayload<Record<string, unknown>>;
@@ -16,7 +16,7 @@ export function subscribeToCalculatorRealtime(
   userId: string,
   onChange: RealtimeHandler,
   onStatusChange?: (status: string) => void,
-) {
+): RealtimeChannel | null {
   if (!supabase) return null;
 
   const channel = supabase.channel(`calculator-sync-${userId}`);
@@ -40,7 +40,7 @@ export function subscribeToCalculatorRealtime(
   return channel;
 }
 
-export async function unsubscribeFromCalculatorRealtime(channel: ReturnType<NonNullable<typeof supabase>['channel']>) {
+export async function unsubscribeFromCalculatorRealtime(channel: RealtimeChannel) {
   if (!supabase) return;
   await supabase.removeChannel(channel);
 }
