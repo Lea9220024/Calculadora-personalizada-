@@ -25,6 +25,14 @@ import { SupabaseSyncModal } from './components/SupabaseSyncModal';
 import { getCurrentMonthKey } from './utils/formatters';
 import { supabase } from './lib/supabase';
 import { readUserDataFromSupabase } from './lib/supabaseRead';
+import {
+  deleteCategoryFromSupabase,
+  deleteTransactionFromSupabase,
+  syncBudgetToSupabase,
+  syncCategoryToSupabase,
+  syncSettingsToSupabase,
+  syncTransactionToSupabase,
+} from './lib/supabaseWrite';
 
 const STORAGE_KEYS = {
   TRANSACTIONS: 'mis_gastos_transactions_v1',
@@ -38,6 +46,12 @@ const createTransactionId = () => {
     return `tx-${crypto['randomUUID']()}`;
   }
   return `tx-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const syncInBackground = (operation: () => Promise<void>, label: string) => {
+  void operation().catch((error) => {
+    console.warn(`No se pudo sincronizar ${label} con Supabase. La copia local se mantiene.`, error);
+  });
 };
 
 export default function App() {
@@ -154,10 +168,9 @@ export default function App() {
 
   const handleSaveTransaction = (txData: Omit<Transaction, 'id' | 'createdAt'>) => {
     if (editingTransaction) {
-      setTransactions(prev => prev.map(t => t.id === editingTransaction.id ? {
-        ...t,
-        ...txData
-      } : t));
+      const updatedTransaction = { ...editingTransaction, ...txData };
+      setTransactions(prev => prev.map(t => t.id === editingTransaction.id ? updatedTransaction : t));
+      syncInBackground(() => syncTransactionToSupabase(updatedTransaction), 'el movimiento');
       setEditingTransaction(null);
     } else {
       const newTx: Transaction = {
@@ -166,6 +179,7 @@ export default function App() {
         createdAt: new Date().toISOString()
       };
       setTransactions(prev => [newTx, ...prev]);
+      syncInBackground(() => syncTransactionToSupabase(newTx), 'el movimiento');
     }
   };
 
@@ -177,11 +191,13 @@ export default function App() {
       createdAt: new Date().toISOString()
     };
     setTransactions(prev => [duplicated, ...prev]);
+    syncInBackground(() => syncTransactionToSupabase(duplicated), 'el movimiento duplicado');
   };
 
   const handleDeleteTransaction = (id: string) => {
     if (window.confirm('¿Seguro que deseas borrar este registro?')) {
       setTransactions(prev => prev.filter(t => t.id !== id));
+      syncInBackground(() => deleteTransactionFromSupabase(id), 'la eliminación del movimiento');
     }
   };
 
@@ -193,6 +209,7 @@ export default function App() {
       }
       return [...prev, newBudget];
     });
+    syncInBackground(() => syncBudgetToSupabase(newBudget), 'el presupuesto');
   };
 
   const handleAddCategory = (newCat: Omit<Category, 'id'>) => {
@@ -201,16 +218,25 @@ export default function App() {
       id: `cat-${Date.now()}`
     };
     setCategories(prev => [...prev, created]);
+    syncInBackground(() => syncCategoryToSupabase(created), 'la categoría');
   };
 
   const handleUpdateCategory = (updated: Category) => {
     setCategories(prev => prev.map(c => c.id === updated.id ? updated : c));
+    syncInBackground(() => syncCategoryToSupabase(updated), 'la categoría');
   };
 
   const handleDeleteCategory = (id: string) => {
     if (window.confirm('¿Deseas eliminar esta categoría?')) {
       setCategories(prev => prev.filter(c => c.id !== id));
+      syncInBackground(() => deleteCategoryFromSupabase(id), 'la eliminación de la categoría');
     }
+  };
+
+  const handleCurrencyChange = (sym: string) => {
+    const nextSettings = { ...settings, currencySymbol: sym };
+    setSettings(nextSettings);
+    syncInBackground(() => syncSettingsToSupabase(nextSettings), 'la configuración');
   };
 
   const handleImportFullData = (imported: {
@@ -246,7 +272,7 @@ export default function App() {
         onOpenExportImport={() => setIsExportImportOpen(true)}
         onOpenSupabaseSync={() => setIsSupabaseSyncOpen(true)}
         currencySymbol={settings.currencySymbol}
-        onCurrencyChange={(sym) => setSettings(s => ({ ...s, currencySymbol: sym }))}
+        onCurrencyChange={handleCurrencyChange}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
