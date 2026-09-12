@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="C.R.E.A.M." />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="manifest" href="/manifest.webmanifest?v=5" />
     <link rel="icon" href="/icon-192.svg" type="image/svg+xml" />
     <title>C.R.E.A.M. — Finanzas Personales</title>
   </head>
@@ -17,8 +17,13 @@
     <script type="module" src="/src/main.tsx"></script>
     <script>
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(console.error);
+        window.addEventListener('load', async () => {
+          try {
+            const registration = await navigator.serviceWorker.register('/sw.js?v=5');
+            await registration.update();
+          } catch (error) {
+            console.error(error);
+          }
         });
       }
     </script>
