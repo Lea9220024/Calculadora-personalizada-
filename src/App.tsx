@@ -17,6 +17,7 @@ import { GlobalGradientDefs } from './components/GradientIcon';
 import { SummaryCards } from './components/SummaryCards';
 import { TransactionList } from './components/TransactionList';
 import { BudgetOverview } from './components/BudgetOverview';
+import { FinancialIntelligence } from './components/FinancialIntelligence';
 import { AnalyticsCharts } from './components/AnalyticsCharts';
 import { CategoryManager } from './components/CategoryManager';
 import { TransactionFormModal } from './components/TransactionFormModal';
@@ -354,6 +355,13 @@ export default function App() {
               </div>
             </div>
 
+            <FinancialIntelligence
+              currentMonthKey={currentMonthKey}
+              budgetTarget={currentBudget.totalTarget}
+              transactions={monthTransactions}
+              currencySymbol={settings.currencySymbol}
+            />
+
             <AnalyticsCharts
               transactions={monthTransactions}
               categories={categories}
@@ -381,14 +389,24 @@ export default function App() {
         )}
 
         {activeTab === 'budgets' && (
-          <BudgetOverview
-            currentMonthKey={currentMonthKey}
-            monthlyBudget={currentBudget}
-            transactions={monthTransactions}
-            categories={categories}
-            currencySymbol={settings.currencySymbol}
-            onUpdateBudget={handleUpdateBudget}
-          />
+          <>
+            <FinancialIntelligence
+              currentMonthKey={currentMonthKey}
+              budgetTarget={currentBudget.totalTarget}
+              transactions={monthTransactions}
+              currencySymbol={settings.currencySymbol}
+            />
+            <div className="mt-6">
+              <BudgetOverview
+                currentMonthKey={currentMonthKey}
+                monthlyBudget={currentBudget}
+                transactions={monthTransactions}
+                categories={categories}
+                currencySymbol={settings.currencySymbol}
+                onUpdateBudget={handleUpdateBudget}
+              />
+            </div>
+          </>
         )}
 
         {activeTab === 'analytics' && (
