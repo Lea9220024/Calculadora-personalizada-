@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, TrendingDown, TrendingUp, WalletCards, ArrowUpRight, ArrowDownRight, Minus, Repeat2, AlertTriangle, Search } from 'lucide-react';
+import { BarChart3, TrendingDown, TrendingUp, WalletCards, ArrowUpRight, ArrowDownRight, Minus, Repeat2, AlertTriangle, Search, ShieldCheck, Target, PiggyBank, Activity, CreditCard } from 'lucide-react';
 import { Category, Transaction } from '../types';
 import { formatCurrency } from '../utils/formatters';
 
@@ -162,6 +162,59 @@ export const HistoricalAnalysis: React.FC<HistoricalAnalysisProps> = ({ transact
     .sort((a, b) => b.total - a.total)
     .slice(0, 3);
 
+  // 5.21: explainable personal financial score, calculated read-only from the available history.
+  const latestExpense = currentMonth?.expense || 0;
+  const latestIncome = currentMonth?.income || 0;
+  const latestSavingsRate = latestIncome > 0 ? ((latestIncome - latestExpense) / latestIncome) * 100 : (latestExpense > 0 ? -100 : 0);
+  const historicalSavingsRates = historicalMonths
+    .filter(m => m.income > 0)
+    .map(m => ((m.income - m.expense) / m.income) * 100);
+  const referenceSavingsRate = historicalSavingsRates.length
+    ? historicalSavingsRates.reduce((sum, value) => sum + value, 0) / historicalSavingsRates.length
+    : latestSavingsRate;
+
+  const savingsPoints = referenceSavingsRate >= 30 ? 25 : referenceSavingsRate >= 20 ? 20 : referenceSavingsRate >= 10 ? 15 : referenceSavingsRate >= 0 ? 8 : 0;
+  const spendingPoints = historicalMonths.length
+    ? expenseDiff <= 5 ? 20 : expenseDiff <= 10 ? 16 : expenseDiff <= 20 ? 10 : expenseDiff <= 30 ? 5 : 2
+    : latestIncome > 0 && latestExpense <= latestIncome ? 15 : latestExpense === 0 ? 10 : 3;
+  const budgetPoints = 10;
+  const budgetReason = 'Todavía no se incorpora el presupuesto al cálculo del score; este factor queda neutral para no penalizarte por falta de datos.';
+
+  const incomeValues = activeMonths.filter(m => m.income > 0).map(m => m.income);
+  const incomeStability = incomeValues.length >= 2
+    ? (() => {
+        const mean = incomeValues.reduce((sum, value) => sum + value, 0) / incomeValues.length;
+        const variance = incomeValues.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / incomeValues.length;
+        const coefficient = mean > 0 ? Math.sqrt(variance) / mean : 1;
+        return coefficient <= 0.10 ? 15 : coefficient <= 0.20 ? 12 : coefficient <= 0.35 ? 9 : coefficient <= 0.50 ? 6 : 3;
+      })()
+    : latestIncome > 0 ? 10 : 3;
+
+  const recurringAmount = recurringPatterns.reduce((sum, group) => sum + group.items.reduce((inner, tx) => inner + tx.amount, 0), 0);
+  const recurringRatio = totalExpense > 0 ? recurringAmount / totalExpense : 0;
+  const recurringPoints = recurringRatio <= 0.40 ? 10 : recurringRatio <= 0.60 ? 8 : recurringRatio <= 0.75 ? 5 : 2;
+
+  const riskCount = extraordinaryCandidates.length + smallExpenseGroups.length + detectedTrends.filter(t => t.direction === 'up').length;
+  const riskPoints = riskCount === 0 ? 10 : riskCount <= 2 ? 7 : riskCount <= 4 ? 4 : 1;
+
+  const rawScore = savingsPoints + spendingPoints + budgetPoints + incomeStability + recurringPoints + riskPoints;
+  const availableMax = 25 + 20 + 20 + 15 + 10 + 10;
+  const score = Math.max(0, Math.min(100, Math.round((rawScore / availableMax) * 100)));
+  const scoreLabel = score >= 85 ? 'Excelente' : score >= 70 ? 'Saludable' : score >= 55 ? 'Atención' : 'Requiere acción';
+  const scoreTone = score >= 85 ? 'text-orange-400' : score >= 70 ? 'text-emerald-400' : score >= 55 ? 'text-amber-400' : 'text-rose-400';
+  const scoreBarTone = score >= 85 ? 'bg-orange-500' : score >= 70 ? 'bg-emerald-500' : score >= 55 ? 'bg-amber-500' : 'bg-rose-500';
+  const scoreFactors = [
+    { label: 'Capacidad de ahorro', points: savingsPoints, max: 25, icon: PiggyBank, reason: `${referenceSavingsRate.toFixed(1)}% de ahorro de referencia.` },
+    { label: 'Control del gasto', points: spendingPoints, max: 20, icon: Activity, reason: historicalMonths.length ? `Gasto actual ${expenseDiff >= 0 ? '+' : ''}${expenseDiff.toFixed(1)}% vs. promedio histórico.` : 'Se toma el balance del mes disponible.' },
+    { label: 'Presupuesto', points: budgetPoints, max: 20, icon: Target, reason: budgetReason },
+    { label: 'Estabilidad de ingresos', points: incomeStability, max: 15, icon: TrendingUp, reason: incomeValues.length >= 2 ? 'Basado en la variación de los ingresos mensuales.' : 'Preliminar: todavía hay pocos meses para medir estabilidad.' },
+    { label: 'Peso recurrente', points: recurringPoints, max: 10, icon: Repeat2, reason: totalExpense > 0 ? `${(recurringRatio * 100).toFixed(1)}% del gasto detectado como recurrente.` : 'Sin gastos para evaluar.' },
+    { label: 'Riesgo de fugas/anomalías', points: riskPoints, max: 10, icon: ShieldCheck, reason: riskCount === 0 ? 'No detecté señales relevantes con el historial disponible.' : `${riskCount} señal${riskCount === 1 ? '' : 'es'} detectada${riskCount === 1 ? '' : 's'} entre anomalías, fugas y aceleraciones.` },
+  ];
+  const weakestFactor = [...scoreFactors].sort((a, b) => (a.points / a.max) - (b.points / b.max))[0];
+  const strongestFactor = [...scoreFactors].sort((a, b) => (b.points / b.max) - (a.points / a.max))[0];
+  const scorePreliminary = activeMonths.length < 2;
+
   const comparisonTone = (diff: number, inverse = false) => {
     const positive = inverse ? diff < -5 : diff > 5;
     const negative = inverse ? diff > 5 : diff < -5;
@@ -193,6 +246,26 @@ export const HistoricalAnalysis: React.FC<HistoricalAnalysisProps> = ({ transact
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4"><div className="text-[11px] uppercase tracking-wider font-bold text-zinc-500">Gastos acumulados</div><div className="mt-2 text-xl font-black text-rose-400">{formatCurrency(totalExpense, currencySymbol)}</div><div className="text-[11px] text-zinc-500 mt-1">Promedio mensual: {formatCurrency(avgExpense, currencySymbol)}</div></div>
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4"><div className="text-[11px] uppercase tracking-wider font-bold text-zinc-500">Balance acumulado</div><div className={`mt-2 text-xl font-black ${balance >= 0 ? 'text-orange-400' : 'text-rose-400'}`}>{formatCurrency(balance, currencySymbol)}</div><div className="text-[11px] text-zinc-500 mt-1">Ingresos menos gastos</div></div>
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4"><div className="text-[11px] uppercase tracking-wider font-bold text-zinc-500">Tasa de ahorro</div><div className={`mt-2 text-xl font-black ${totalIncome > 0 && balance >= 0 ? 'text-orange-400' : 'text-rose-400'}`}>{totalIncome > 0 ? `${((balance / totalIncome) * 100).toFixed(1)}%` : '—'}</div><div className="text-[11px] text-zinc-500 mt-1">Sobre los ingresos registrados</div></div>
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div><div className="flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-orange-400" /><h3 className="text-sm font-black text-white">Score financiero personal</h3></div><p className="text-[11px] text-zinc-500 mt-1">Indicador de 0 a 100 construido a partir de tus hábitos registrados.</p></div>
+              <div className="text-right"><div className={`text-4xl font-black leading-none ${scoreTone}`}>{score}</div><div className={`text-[11px] font-black uppercase tracking-wider mt-1 ${scoreTone}`}>{scoreLabel}</div></div>
+            </div>
+            <div className="mt-4 h-2 rounded-full bg-zinc-800 overflow-hidden"><div className={`h-full rounded-full ${scoreBarTone} transition-all`} style={{ width: `${score}%` }} /></div>
+            {scorePreliminary && <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-[11px] text-amber-300">Score <strong>preliminar</strong>: hoy hay menos de dos meses con movimientos. Cuando cargues más meses, el cálculo se volverá más representativo y no necesitarás recargar ni modificar tus datos actuales.</div>}
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {scoreFactors.map(factor => {
+                const Icon = factor.icon;
+                const pct = (factor.points / factor.max) * 100;
+                return <div key={factor.label} className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3"><div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2 min-w-0"><Icon className="w-4 h-4 text-zinc-400 shrink-0" /><span className="text-[11px] font-black text-zinc-200 truncate">{factor.label}</span></div><span className="text-[11px] font-black text-white">{factor.points}/{factor.max}</span></div><div className="mt-2 h-1.5 rounded-full bg-zinc-800 overflow-hidden"><div className="h-full rounded-full bg-orange-500" style={{ width: `${pct}%` }} /></div><p className="text-[10px] text-zinc-500 mt-2 leading-relaxed">{factor.reason}</p></div>;
+              })}
+            </div>
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-3"><div className="text-[10px] uppercase tracking-wider font-black text-orange-400">Tu prioridad</div><p className="text-xs text-zinc-300 mt-1"><strong className="text-white">{weakestFactor.label}</strong>: es el factor con mayor margen de mejora en este momento.</p></div>
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3"><div className="text-[10px] uppercase tracking-wider font-black text-zinc-500">Tu punto fuerte</div><p className="text-xs text-zinc-300 mt-1"><strong className="text-white">{strongestFactor.label}</strong>: es tu mejor indicador dentro del score actual.</p></div>
+            </div>
           </div>
 
           <div className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
