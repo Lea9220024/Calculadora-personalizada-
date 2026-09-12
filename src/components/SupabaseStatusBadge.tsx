@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, CloudOff, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { getPendingSupabaseSyncCount } from '../lib/supabaseSyncQueue';
 import { flushPendingSupabaseSync } from '../lib/supabaseSyncRunner';
 
