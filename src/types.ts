@@ -11,6 +11,35 @@ export interface Category {
   type: TransactionType | 'both';
 }
 
+export type CardType = 'credit' | 'debit';
+
+export interface FinancialCard {
+  id: string;
+  name: string;
+  type: CardType;
+  brand?: string;
+  last4?: string;
+  creditLimit?: number;
+  closingDay?: number;
+  dueDay?: number;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface InstallmentPlan {
+  id: string;
+  cardId: string;
+  title: string;
+  totalAmount: number;
+  installmentAmount: number;
+  installments: number;
+  currentInstallment: number;
+  startDate: string;
+  transactionId?: string;
+  notes?: string;
+  createdAt: string;
+}
+
 export interface Transaction {
   id: string;
   title: string;
@@ -21,6 +50,11 @@ export interface Transaction {
   paymentMethod: PaymentMethod;
   notes?: string;
   isRecurring?: boolean;
+  cardId?: string;
+  installmentPlanId?: string;
+  installmentNumber?: number;
+  installmentTotal?: number;
+  installmentTotalAmount?: number;
   createdAt: string;
 }
 
@@ -37,4 +71,4 @@ export interface AppSettings {
   startDayOfMonth: number; // e.g., 1
 }
 
-export type ViewTab = 'dashboard' | 'transactions' | 'budgets' | 'analytics' | 'categories';
+export type ViewTab = 'dashboard' | 'transactions' | 'budgets' | 'analytics' | 'categories' | 'cards';
