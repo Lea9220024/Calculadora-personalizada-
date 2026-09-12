@@ -35,7 +35,7 @@ const STORAGE_KEYS = {
 
 const createTransactionId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto['randomUUID'] === 'function') {
-    return `tx-${crypto['randomUUID']}`;
+    return `tx-${crypto['randomUUID']()}`;
   }
   return `tx-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 };
