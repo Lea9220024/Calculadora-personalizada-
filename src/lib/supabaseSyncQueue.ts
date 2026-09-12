@@ -1,4 +1,5 @@
 import { AppSettings, Category, MonthlyBudget, Transaction } from '../types';
+import { supabase } from './supabase';
 
 const QUEUE_KEY = 'mis_gastos_supabase_sync_queue_v1';
 
@@ -48,4 +49,23 @@ export function getPendingSupabaseSyncQueue() {
 
 export function getPendingSupabaseSyncCount() {
   return readQueue().length;
+}
+
+// La cola se reintenta automáticamente al recuperar conexión o sesión.
+// El import dinámico evita una dependencia circular con supabaseWrite.
+if (typeof window !== 'undefined') {
+  const flush = () => {
+    void import('./supabaseSyncRunner').then(({ flushPendingSupabaseSync }) => flushPendingSupabaseSync());
+  };
+
+  window.addEventListener('online', flush);
+  window.setTimeout(flush, 1500);
+
+  if (supabase) {
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+        window.setTimeout(flush, 250);
+      }
+    });
+  }
 }
