@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, TrendingDown, TrendingUp, WalletCards, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
+import { BarChart3, TrendingDown, TrendingUp, WalletCards, ArrowUpRight, ArrowDownRight, Minus, Repeat2, AlertTriangle, Search } from 'lucide-react';
 import { Category, Transaction } from '../types';
 import { formatCurrency } from '../utils/formatters';
 
@@ -72,7 +72,6 @@ export const HistoricalAnalysis: React.FC<HistoricalAnalysisProps> = ({ transact
     .sort((a, b) => (b.current - b.previous) - (a.current - a.previous));
   const biggestCategoryIncrease = categoryChanges.find(c => c.current > c.previous);
 
-  // 5.19: detect sustained three-month category and total-expense trends.
   const trendCandidates = Object.keys(categoryTotals).map(id => {
     const values = monthly.map(m => yearTransactions
       .filter(tx => tx.type === 'expense' && tx.categoryId === id && monthKey(tx.date) === m.key)
@@ -112,7 +111,56 @@ export const HistoricalAnalysis: React.FC<HistoricalAnalysisProps> = ({ transact
       expenseTrendWindows.push({ direction: 'down', change: ((window[0] - window[2]) / window[0]) * 100, months: monthly.slice(i - 2, i + 1).map(m => m.label) });
     }
   }
-  const latestExpenseTrend = expenseTrendWindows.at(-1);
+  const latestExpenseTrend = expenseTrendWindows.length ? expenseTrendWindows[expenseTrendWindows.length - 1] : undefined;
+
+  // 5.20: recurring, extraordinary and potential leakage patterns.
+  const expenseTransactions = yearTransactions.filter(tx => tx.type === 'expense');
+  const titleKey = (title: string) => title.trim().toLowerCase().replace(/\s+/g, ' ');
+  const titleGroups = new Map<string, Transaction[]>();
+  expenseTransactions.forEach(tx => {
+    const key = titleKey(tx.title);
+    if (!key) return;
+    const group = titleGroups.get(key) || [];
+    group.push(tx);
+    titleGroups.set(key, group);
+  });
+
+  const recurringPatterns = [...titleGroups.entries()]
+    .map(([key, items]) => {
+      const months = new Set(items.map(tx => monthKey(tx.date)));
+      const avg = items.reduce((sum, tx) => sum + tx.amount, 0) / items.length;
+      return { key, items, months: months.size, avg };
+    })
+    .filter(g => g.items.length >= 3 && g.months >= 2)
+    .sort((a, b) => b.months - a.months || b.items.length - a.items.length)
+    .slice(0, 4);
+
+  const categoryMonthlyHistory = Object.keys(categoryTotals).map(id => {
+    const values = activeMonths.map(m => yearTransactions
+      .filter(tx => tx.type === 'expense' && tx.categoryId === id && monthKey(tx.date) === m.key)
+      .reduce((sum, tx) => sum + tx.amount, 0));
+    return { id, values };
+  });
+
+  const extraordinaryCandidates = expenseTransactions.map(tx => {
+    const categoryHistory = categoryMonthlyHistory.find(c => c.id === tx.categoryId)?.values || [];
+    const positive = categoryHistory.filter(v => v > 0);
+    const baseline = positive.length > 1 ? positive.reduce((sum, v) => sum + v, 0) / positive.length : 0;
+    return { tx, baseline, ratio: baseline > 0 ? tx.amount / baseline : 0 };
+  }).filter(x => x.baseline > 0 && x.ratio >= 1.75 && x.tx.amount >= 1000)
+    .sort((a, b) => b.ratio - a.ratio)
+    .slice(0, 3);
+
+  const smallExpenseThreshold = Math.max(1500, Math.min(5000, avgExpense * 0.025));
+  const smallExpenseGroups = [...titleGroups.entries()].map(([key, items]) => ({
+    key,
+    count: items.length,
+    total: items.reduce((sum, tx) => sum + tx.amount, 0),
+    avg: items.reduce((sum, tx) => sum + tx.amount, 0) / items.length,
+    months: new Set(items.map(tx => monthKey(tx.date))).size,
+  })).filter(g => g.count >= 3 && g.avg <= smallExpenseThreshold && g.months >= 2)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 3);
 
   const comparisonTone = (diff: number, inverse = false) => {
     const positive = inverse ? diff < -5 : diff > 5;
@@ -124,6 +172,7 @@ export const HistoricalAnalysis: React.FC<HistoricalAnalysisProps> = ({ transact
 
   const expenseTone = comparisonTone(expenseDiff);
   const incomeTone = comparisonTone(incomeDiff, true);
+  const readableTitle = (key: string) => key.length > 34 ? `${key.slice(0, 34)}…` : key;
 
   return (
     <section className="mt-6 rounded-3xl border border-zinc-800 bg-zinc-900/90 p-5 shadow-md text-zinc-100">
@@ -161,6 +210,25 @@ export const HistoricalAnalysis: React.FC<HistoricalAnalysisProps> = ({ transact
               {latestExpenseTrend && <div className="flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-950/70 p-3"><div className="mt-0.5 rounded-lg bg-zinc-800 p-1.5 text-zinc-300">{latestExpenseTrend.direction === 'up' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}</div><div><p className="text-xs font-bold text-zinc-200">El gasto total {latestExpenseTrend.direction === 'up' ? 'viene aumentando' : 'viene disminuyendo'} durante {latestExpenseTrend.months.join(', ')}.</p><p className="text-[11px] text-zinc-500 mt-0.5">Variación acumulada: {latestExpenseTrend.direction === 'up' ? '+' : '-'}{latestExpenseTrend.change.toFixed(1)}%</p></div></div>}
             </div>
           </div>}
+
+          <div className="mt-3 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+            <div className="flex items-center gap-2"><Search className="w-4 h-4 text-orange-400" /><h3 className="text-sm font-black text-white">Patrones de gasto</h3></div>
+            <p className="text-[11px] text-zinc-500 mt-1">Detecto repeticiones y anomalías sin modificar tus movimientos.</p>
+            <div className="mt-3 grid grid-cols-1 lg:grid-cols-3 gap-3">
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
+                <div className="flex items-center gap-2"><Repeat2 className="w-4 h-4 text-orange-400" /><span className="text-xs font-black text-zinc-200">Gastos recurrentes</span></div>
+                {recurringPatterns.length ? <div className="mt-3 space-y-2">{recurringPatterns.map(g => <div key={g.key}><div className="text-xs font-bold text-zinc-300 truncate">{readableTitle(g.key)}</div><div className="text-[10px] text-zinc-500">{g.items.length} movimientos · {g.months} meses · promedio {formatCurrency(g.avg, currencySymbol)}</div></div>)}</div> : <p className="mt-3 text-[11px] text-zinc-500">Todavía no hay suficiente repetición para marcar un gasto como recurrente.</p>}
+              </div>
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
+                <div className="flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-orange-400" /><span className="text-xs font-black text-zinc-200">Gastos extraordinarios</span></div>
+                {extraordinaryCandidates.length ? <div className="mt-3 space-y-2">{extraordinaryCandidates.map(x => <div key={x.tx.id}><div className="text-xs font-bold text-zinc-300 truncate">{x.tx.title}</div><div className="text-[10px] text-zinc-500">{formatCurrency(x.tx.amount, currencySymbol)} · {x.ratio.toFixed(1)}× el promedio de su categoría</div></div>)}</div> : <p className="mt-3 text-[11px] text-zinc-500">No detecté gastos claramente extraordinarios con el historial disponible.</p>}
+              </div>
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
+                <div className="flex items-center gap-2"><Search className="w-4 h-4 text-orange-400" /><span className="text-xs font-black text-zinc-200">Posibles fugas</span></div>
+                {smallExpenseGroups.length ? <div className="mt-3 space-y-2">{smallExpenseGroups.map(g => <div key={g.key}><div className="text-xs font-bold text-zinc-300 truncate">{readableTitle(g.key)}</div><div className="text-[10px] text-zinc-500">{g.count} veces · acumulado {formatCurrency(g.total, currencySymbol)}</div></div>)}</div> : <p className="mt-3 text-[11px] text-zinc-500">No detecté pequeñas repeticiones con impacto suficiente para señalarlas como posible fuga.</p>}
+              </div>
+            </div>
+          </div>
 
           {biggestCategoryIncrease && <div className="mt-3 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4"><div className="flex items-center gap-2"><TrendingUp className="w-4 h-4 text-orange-400" /><h3 className="text-sm font-black text-white">Tendencia detectada</h3></div><p className="text-xs text-zinc-400 mt-2">Este mes, <strong className="text-white">{categoryName(biggestCategoryIncrease.id)}</strong> aumentó <strong className="text-orange-400">{formatCurrency(biggestCategoryIncrease.current - biggestCategoryIncrease.previous, currencySymbol)}</strong> respecto del mes anterior.</p></div>}
 
