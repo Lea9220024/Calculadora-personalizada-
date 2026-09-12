@@ -6,7 +6,7 @@ export interface Category {
   id: string;
   name: string;
   icon: string;
-  color: string; // Tailwind bg color or hex
+  color: string;
   textColor: string;
   type: TransactionType | 'both';
 }
@@ -40,13 +40,30 @@ export interface InstallmentPlan {
   createdAt: string;
 }
 
+export type SubscriptionFrequency = 'monthly' | 'yearly';
+
+export interface Subscription {
+  id: string;
+  name: string;
+  amount: number;
+  frequency: SubscriptionFrequency;
+  nextChargeDate: string;
+  categoryId?: string;
+  paymentMethod: PaymentMethod;
+  cardId?: string;
+  active: boolean;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Transaction {
   id: string;
   title: string;
   amount: number;
   type: TransactionType;
   categoryId: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   paymentMethod: PaymentMethod;
   notes?: string;
   isRecurring?: boolean;
@@ -59,16 +76,16 @@ export interface Transaction {
 }
 
 export interface MonthlyBudget {
-  monthKey: string; // YYYY-MM
+  monthKey: string;
   totalTarget: number;
-  categoryTargets: Record<string, number>; // categoryId -> targetAmount
+  categoryTargets: Record<string, number>;
 }
 
 export interface AppSettings {
   currencySymbol: string;
   currencyCode: string;
   theme: 'light' | 'dark' | 'system';
-  startDayOfMonth: number; // e.g., 1
+  startDayOfMonth: number;
 }
 
-export type ViewTab = 'dashboard' | 'transactions' | 'budgets' | 'analytics' | 'categories' | 'cards';
+export type ViewTab = 'dashboard' | 'transactions' | 'budgets' | 'analytics' | 'categories' | 'cards' | 'subscriptions';
