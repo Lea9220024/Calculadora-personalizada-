@@ -88,4 +88,27 @@ export interface AppSettings {
   startDayOfMonth: number;
 }
 
-export type ViewTab = 'dashboard' | 'transactions' | 'budgets' | 'analytics' | 'categories' | 'cards' | 'subscriptions';
+export type PatrimonyItemType = 'asset' | 'liability';
+
+export interface PatrimonyItem {
+  id: string;
+  name: string;
+  type: PatrimonyItemType;
+  category: string;
+  value: number;
+  valuationDate: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NetWorthSnapshot {
+  id: string;
+  snapshotDate: string;
+  totalAssets: number;
+  totalLiabilities: number;
+  netWorth: number;
+  createdAt: string;
+}
+
+export type ViewTab = 'dashboard' | 'transactions' | 'budgets' | 'analytics' | 'patrimony' | 'categories' | 'cards' | 'subscriptions';
