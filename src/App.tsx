@@ -25,6 +25,7 @@ import { SupabaseSyncModal } from './components/SupabaseSyncModal';
 import { getCurrentMonthKey } from './utils/formatters';
 import { supabase } from './lib/supabase';
 import { readUserDataFromSupabase } from './lib/supabaseRead';
+import { subscribeToCalculatorRealtime, unsubscribeFromCalculatorRealtime } from './lib/supabaseRealtime';
 import {
   deleteCategoryFromSupabase,
   deleteTransactionFromSupabase,
@@ -124,6 +125,7 @@ export default function App() {
 
     let cancelled = false;
     let loadingUserId: string | null = null;
+    let realtimeChannel: ReturnType<typeof subscribeToCalculatorRealtime> = null;
 
     const loadCloudData = async (userId: string) => {
       if (cancelled || loadingUserId === userId) return;
@@ -144,10 +146,18 @@ export default function App() {
       }
     };
 
+    const startRealtime = (userId: string) => {
+      if (cancelled || realtimeChannel) return;
+      realtimeChannel = subscribeToCalculatorRealtime(userId, () => {
+        void loadCloudData(userId);
+      });
+    };
+
     const loadCurrentSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!cancelled && session?.user) {
         await loadCloudData(session.user.id);
+        startRealtime(session.user.id);
       }
     };
 
@@ -156,13 +166,20 @@ export default function App() {
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (cancelled) return;
       if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
-        void loadCloudData(session.user.id);
+        void loadCloudData(session.user.id).then(() => startRealtime(session.user.id));
+      }
+      if (event === 'SIGNED_OUT' && realtimeChannel) {
+        void unsubscribeFromCalculatorRealtime(realtimeChannel);
+        realtimeChannel = null;
       }
     });
 
     return () => {
       cancelled = true;
       authListener.subscription.unsubscribe();
+      if (realtimeChannel) {
+        void unsubscribeFromCalculatorRealtime(realtimeChannel);
+      }
     };
   }, []);
 
