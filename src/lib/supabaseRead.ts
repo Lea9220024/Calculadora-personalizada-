@@ -1,5 +1,8 @@
 import { supabase } from './supabase';
 import { AppSettings, Category, MonthlyBudget, NetWorthSnapshot, PatrimonyItem, Transaction } from '../types';
+import { enqueuePendingSupabaseSync } from './supabaseSyncQueue';
+
+const TRANSACTIONS_STORAGE_KEY = 'mis_gastos_transactions_v1';
 
 export interface SupabaseDataPayload {
   transactions: Transaction[];
@@ -8,6 +11,34 @@ export interface SupabaseDataPayload {
   settings: AppSettings | null;
   patrimonyItems: PatrimonyItem[];
   netWorthSnapshots: NetWorthSnapshot[];
+}
+
+function readLocalTransactions(): Transaction[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function mergeTransactions(cloudTransactions: Transaction[]): Transaction[] {
+  const localTransactions = readLocalTransactions();
+  if (!localTransactions.length) return cloudTransactions;
+
+  const cloudIds = new Set(cloudTransactions.map((transaction) => transaction.id));
+  const localOnlyTransactions = localTransactions.filter((transaction) => transaction?.id && !cloudIds.has(transaction.id));
+
+  // La nube nunca pisa datos locales que todavía no llegaron a Supabase.
+  // Cada registro local faltante queda en la cola para subirlo automáticamente.
+  for (const transaction of localOnlyTransactions) {
+    enqueuePendingSupabaseSync({ type: 'upsert_transaction', payload: transaction });
+  }
+
+  return [...localOnlyTransactions, ...cloudTransactions];
 }
 
 export async function readUserDataFromSupabase(userId: string): Promise<SupabaseDataPayload> {
@@ -29,15 +60,21 @@ export async function readUserDataFromSupabase(userId: string): Promise<Supabase
   if (patrimonyResult.error) throw new Error(`Patrimonio: ${patrimonyResult.error.message}`);
   if (snapshotsResult.error) throw new Error(`Historial patrimonial: ${snapshotsResult.error.message}`);
 
-  // Safety guard: an empty cloud result must never overwrite a device's local movements.
-  // This protects existing August/September data when a device is logged into another
-  // account or while the cloud session is not ready yet.
-  if (!transactionsResult.data?.length) {
-    throw new Error('Supabase devolvió 0 movimientos para esta cuenta. Se conserva la copia local para evitar pérdida de datos.');
-  }
+  const cloudTransactions = (transactionsResult.data ?? []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    amount: Number(row.amount),
+    type: row.type,
+    categoryId: row.category_id,
+    date: row.date,
+    paymentMethod: row.payment_method,
+    notes: row.notes ?? undefined,
+    isRecurring: row.is_recurring ?? false,
+    createdAt: row.created_at,
+  }));
 
   return {
-    transactions: transactionsResult.data.map((row) => ({ id: row.id, title: row.title, amount: Number(row.amount), type: row.type, categoryId: row.category_id, date: row.date, paymentMethod: row.payment_method, notes: row.notes ?? undefined, isRecurring: row.is_recurring ?? false, createdAt: row.created_at })),
+    transactions: mergeTransactions(cloudTransactions),
     categories: (categoriesResult.data ?? []).map((row) => ({ id: row.id, name: row.name, icon: row.icon, color: row.color, textColor: row.text_color, type: row.type })),
     budgets: (budgetsResult.data ?? []).map((row) => ({ monthKey: row.month_key, totalTarget: Number(row.total_target), categoryTargets: row.category_targets ?? {} })),
     settings: settingsResult.data ? { currencySymbol: settingsResult.data.currency_symbol, currencyCode: settingsResult.data.currency_code, theme: settingsResult.data.theme, startDayOfMonth: settingsResult.data.start_day_of_month } : null,
