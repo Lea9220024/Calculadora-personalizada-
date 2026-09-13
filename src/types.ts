@@ -128,4 +128,4 @@ export interface FutureCommitment {
   updatedAt: string;
 }
 
-export type ViewTab = 'dashboard' | 'transactions' | 'budgets' | 'analytics' | 'patrimony' | 'commitments' | 'categories' | 'cards' | 'subscriptions';
+export type ViewTab = 'dashboard' | 'transactions' | 'budgets' | 'analytics' | 'money-ai' | 'patrimony' | 'commitments' | 'categories' | 'cards' | 'subscriptions';
