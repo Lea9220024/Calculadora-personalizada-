@@ -2,7 +2,6 @@ import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supab
 import { supabase } from './supabase';
 
 export type SupabaseRealtimePayload = RealtimePostgresChangesPayload<Record<string, unknown>>;
-
 type RealtimeHandler = (payload: SupabaseRealtimePayload) => void;
 
 const CALCULATOR_TABLES = [
@@ -28,6 +27,7 @@ export function subscribeToCalculatorRealtime(
         event: '*',
         schema: 'public',
         table,
+        filter: `user_id=eq.${userId}`,
       },
       onChange,
     );
