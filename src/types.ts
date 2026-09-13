@@ -111,4 +111,21 @@ export interface NetWorthSnapshot {
   createdAt: string;
 }
 
-export type ViewTab = 'dashboard' | 'transactions' | 'budgets' | 'analytics' | 'patrimony' | 'categories' | 'cards' | 'subscriptions';
+export type FutureCommitmentType = 'manual' | 'installment' | 'subscription' | 'recurring';
+
+export interface FutureCommitment {
+  id: string;
+  name: string;
+  amount: number;
+  dueDate: string;
+  type: FutureCommitmentType;
+  categoryId?: string;
+  cardId?: string;
+  installmentsRemaining?: number;
+  notes?: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ViewTab = 'dashboard' | 'transactions' | 'budgets' | 'analytics' | 'patrimony' | 'commitments' | 'categories' | 'cards' | 'subscriptions';
