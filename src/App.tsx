@@ -15,6 +15,7 @@ import { Subscriptions } from './components/Subscriptions';
 import { CategoryManager } from './components/CategoryManager';
 import { Patrimony } from './components/Patrimony';
 import { FutureCommitments } from './components/FutureCommitments';
+import { MoneyAI } from './components/MoneyAI';
 import { TransactionFormModal } from './components/TransactionFormModal';
 import { ExportImportModal } from './components/ExportImportModal';
 import { SafeImportModal } from './components/SafeImportModal';
@@ -120,6 +121,7 @@ export default function App() {
       {activeTab === 'transactions' && <TransactionList transactions={monthTransactions} categories={categories} currencySymbol={settings.currencySymbol} onEdit={tx => { setEditingTransaction(tx); setIsFormModalOpen(true); }} onDuplicate={handleDuplicateTransaction} onDelete={handleDeleteTransaction} onAddNew={() => { setEditingTransaction(null); setIsFormModalOpen(true); }} />}
       {activeTab === 'budgets' && <><FinancialIntelligence currentMonthKey={currentMonthKey} budgetTarget={currentBudget.totalTarget} transactions={monthTransactions} currencySymbol={settings.currencySymbol} /><div className="mt-6"><BudgetOverview currentMonthKey={currentMonthKey} monthlyBudget={currentBudget} transactions={monthTransactions} categories={categories} currencySymbol={settings.currencySymbol} onUpdateBudget={handleUpdateBudget} /></div></>}
       {activeTab === 'analytics' && <><AnalyticsCharts transactions={monthTransactions} categories={categories} currencySymbol={settings.currencySymbol} /><HistoricalAnalysis transactions={transactions} currencySymbol={settings.currencySymbol} /><div className="mt-6"><FinancialGoals transactions={transactions} currencySymbol={settings.currencySymbol} /></div></>}
+      {activeTab === 'money-ai' && <MoneyAI currentMonthKey={currentMonthKey} transactions={transactions} categories={categories} budget={currentBudget} commitments={futureCommitments} installmentPlans={installmentPlans} subscriptions={subscriptions} patrimonyItems={patrimonyItems} cards={cards} currencySymbol={settings.currencySymbol} />}
       {activeTab === 'patrimony' && <Patrimony items={patrimonyItems} snapshots={netWorthSnapshots} currencySymbol={settings.currencySymbol} onAdd={handleAddPatrimony} onUpdate={handleUpdatePatrimony} onDelete={handleDeletePatrimony} />}
       {activeTab === 'commitments' && <FutureCommitments commitments={futureCommitments} installmentPlans={installmentPlans} subscriptions={subscriptions} transactions={transactions} categories={categories} cards={cards} currencySymbol={settings.currencySymbol} onAdd={handleAddCommitment} onUpdate={handleUpdateCommitment} onDelete={handleDeleteCommitment} />}
       {activeTab === 'cards' && <CardsAndInstallments cards={cards} installmentPlans={installmentPlans} transactions={transactions} currentMonthKey={currentMonthKey} currencySymbol={settings.currencySymbol} onAddCard={handleAddCard} onUpdateCard={handleUpdateCard} onDeleteCard={handleDeleteCard} />}
