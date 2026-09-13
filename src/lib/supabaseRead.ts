@@ -29,8 +29,15 @@ export async function readUserDataFromSupabase(userId: string): Promise<Supabase
   if (patrimonyResult.error) throw new Error(`Patrimonio: ${patrimonyResult.error.message}`);
   if (snapshotsResult.error) throw new Error(`Historial patrimonial: ${snapshotsResult.error.message}`);
 
+  // Safety guard: an empty cloud result must never overwrite a device's local movements.
+  // This protects existing August/September data when a device is logged into another
+  // account or while the cloud session is not ready yet.
+  if (!transactionsResult.data?.length) {
+    throw new Error('Supabase devolvió 0 movimientos para esta cuenta. Se conserva la copia local para evitar pérdida de datos.');
+  }
+
   return {
-    transactions: (transactionsResult.data ?? []).map((row) => ({ id: row.id, title: row.title, amount: Number(row.amount), type: row.type, categoryId: row.category_id, date: row.date, paymentMethod: row.payment_method, notes: row.notes ?? undefined, isRecurring: row.is_recurring ?? false, createdAt: row.created_at })),
+    transactions: transactionsResult.data.map((row) => ({ id: row.id, title: row.title, amount: Number(row.amount), type: row.type, categoryId: row.category_id, date: row.date, paymentMethod: row.payment_method, notes: row.notes ?? undefined, isRecurring: row.is_recurring ?? false, createdAt: row.created_at })),
     categories: (categoriesResult.data ?? []).map((row) => ({ id: row.id, name: row.name, icon: row.icon, color: row.color, textColor: row.text_color, type: row.type })),
     budgets: (budgetsResult.data ?? []).map((row) => ({ monthKey: row.month_key, totalTarget: Number(row.total_target), categoryTargets: row.category_targets ?? {} })),
     settings: settingsResult.data ? { currencySymbol: settingsResult.data.currency_symbol, currencyCode: settingsResult.data.currency_code, theme: settingsResult.data.theme, startDayOfMonth: settingsResult.data.start_day_of_month } : null,
