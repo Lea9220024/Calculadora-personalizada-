@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Category, FinancialCard, InstallmentPlan, MonthlyBudget, NetWorthSnapshot, PatrimonyItem, Subscription, Transaction, ViewTab, AppSettings } from './types';
+import { Category, FinancialCard, InstallmentPlan, MonthlyBudget, NetWorthSnapshot, PatrimonyItem, Subscription, FutureCommitment, Transaction, ViewTab, AppSettings } from './types';
 import { DEFAULT_CATEGORIES, DEFAULT_SETTINGS, INITIAL_BUDGET, INITIAL_TRANSACTIONS } from './data/initialData';
 import { Header } from './components/Header';
 import { GlobalGradientDefs } from './components/GradientIcon';
@@ -14,6 +14,7 @@ import { CardsAndInstallments } from './components/CardsAndInstallments';
 import { Subscriptions } from './components/Subscriptions';
 import { CategoryManager } from './components/CategoryManager';
 import { Patrimony } from './components/Patrimony';
+import { FutureCommitments } from './components/FutureCommitments';
 import { TransactionFormModal } from './components/TransactionFormModal';
 import { ExportImportModal } from './components/ExportImportModal';
 import { SafeImportModal } from './components/SafeImportModal';
@@ -25,7 +26,7 @@ import { readUserDataFromSupabase } from './lib/supabaseRead';
 import { subscribeToCalculatorRealtime, unsubscribeFromCalculatorRealtime } from './lib/supabaseRealtime';
 import { deleteCategoryFromSupabase, deletePatrimonyItemFromSupabase, deleteTransactionFromSupabase, syncBudgetToSupabase, syncCategoryToSupabase, syncNetWorthSnapshotToSupabase, syncPatrimonyItemToSupabase, syncSettingsToSupabase, syncTransactionToSupabase } from './lib/supabaseWrite';
 
-const STORAGE_KEYS = { TRANSACTIONS: 'mis_gastos_transactions_v1', CATEGORIES: 'mis_gastos_categories_v1', BUDGETS: 'mis_gastos_budgets_v1', SETTINGS: 'mis_gastos_settings_v1', CARDS: 'cream_financial_cards_v1', INSTALLMENTS: 'cream_installment_plans_v1', SUBSCRIPTIONS: 'cream_subscriptions_v1', PATRIMONY: 'cream_patrimony_v1', NET_WORTH: 'cream_net_worth_v1' };
+const STORAGE_KEYS = { TRANSACTIONS: 'mis_gastos_transactions_v1', CATEGORIES: 'mis_gastos_categories_v1', BUDGETS: 'mis_gastos_budgets_v1', SETTINGS: 'mis_gastos_settings_v1', CARDS: 'cream_financial_cards_v1', INSTALLMENTS: 'cream_installment_plans_v1', SUBSCRIPTIONS: 'cream_subscriptions_v1', PATRIMONY: 'cream_patrimony_v1', NET_WORTH: 'cream_net_worth_v1', COMMITMENTS: 'cream_future_commitments_v1' };
 const createTransactionId = () => typeof crypto !== 'undefined' && typeof crypto['randomUUID'] === 'function' ? `tx-${crypto['randomUUID']}` : `tx-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 const createId = (prefix: string) => typeof crypto !== 'undefined' && typeof crypto['randomUUID'] === 'function' ? `${prefix}-${crypto['randomUUID']}` : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 const syncInBackground = (operation: () => Promise<void>, label: string) => { void operation().catch((error) => console.warn(`No se pudo sincronizar ${label} con Supabase. La copia local se mantiene.`, error)); };
@@ -42,6 +43,7 @@ export default function App() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>(() => { try { const saved = localStorage.getItem(STORAGE_KEYS.SUBSCRIPTIONS); if (saved) return JSON.parse(saved); } catch (e) { console.error(e); } return []; });
   const [patrimonyItems, setPatrimonyItems] = useState<PatrimonyItem[]>(() => { try { const saved = localStorage.getItem(STORAGE_KEYS.PATRIMONY); if (saved) return JSON.parse(saved); } catch (e) { console.error(e); } return []; });
   const [netWorthSnapshots, setNetWorthSnapshots] = useState<NetWorthSnapshot[]>(() => { try { const saved = localStorage.getItem(STORAGE_KEYS.NET_WORTH); if (saved) return JSON.parse(saved); } catch (e) { console.error(e); } return []; });
+  const [futureCommitments, setFutureCommitments] = useState<FutureCommitment[]>(() => { try { const saved = localStorage.getItem(STORAGE_KEYS.COMMITMENTS); if (saved) return JSON.parse(saved); } catch (e) { console.error(e); } return []; });
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isExportImportOpen, setIsExportImportOpen] = useState(false);
@@ -57,6 +59,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.SUBSCRIPTIONS, JSON.stringify(subscriptions)); }, [subscriptions]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.PATRIMONY, JSON.stringify(patrimonyItems)); }, [patrimonyItems]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.NET_WORTH, JSON.stringify(netWorthSnapshots)); }, [netWorthSnapshots]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.COMMITMENTS, JSON.stringify(futureCommitments)); }, [futureCommitments]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -99,6 +102,9 @@ export default function App() {
   const handleUpdatePatrimony = (item: PatrimonyItem) => { const updated = { ...item, updatedAt: new Date().toISOString() }; setPatrimonyItems(prev => prev.map(i => i.id === updated.id ? updated : i)); syncInBackground(() => syncPatrimonyItemToSupabase(updated), 'el patrimonio'); };
   const handleDeletePatrimony = (id: string) => { if (window.confirm('¿Eliminar este registro patrimonial?')) { setPatrimonyItems(prev => prev.filter(i => i.id !== id)); syncInBackground(() => deletePatrimonyItemFromSupabase(id), 'la eliminación del patrimonio'); } };
   useEffect(() => { if (!patrimonyItems.length) return; const totalAssets = patrimonyItems.filter(i => i.type === 'asset').reduce((s, i) => s + i.value, 0); const totalLiabilities = patrimonyItems.filter(i => i.type === 'liability').reduce((s, i) => s + i.value, 0); const snapshotDate = new Date().toISOString().slice(0, 10); const snapshot: NetWorthSnapshot = { id: createId('snapshot'), snapshotDate, totalAssets, totalLiabilities, netWorth: totalAssets - totalLiabilities, createdAt: new Date().toISOString() }; setNetWorthSnapshots(prev => { const existing = prev.find(s => s.snapshotDate === snapshotDate); return existing ? prev.map(s => s.snapshotDate === snapshotDate ? { ...s, totalAssets, totalLiabilities, netWorth: totalAssets - totalLiabilities } : s) : [snapshot, ...prev]; }); syncInBackground(() => syncNetWorthSnapshotToSupabase(snapshot), 'el historial patrimonial'); }, [patrimonyItems]);
+  const handleAddCommitment = (data: Omit<FutureCommitment, 'id' | 'createdAt' | 'updatedAt'>) => { const now = new Date().toISOString(); setFutureCommitments(prev => [{ ...data, id: createId('commitment'), createdAt: now, updatedAt: now }, ...prev]); };
+  const handleUpdateCommitment = (item: FutureCommitment) => setFutureCommitments(prev => prev.map(c => c.id === item.id ? { ...item, updatedAt: new Date().toISOString() } : c));
+  const handleDeleteCommitment = (id: string) => { if (window.confirm('¿Eliminar este compromiso futuro?')) setFutureCommitments(prev => prev.filter(c => c.id !== id)); };
   const handleCurrencyChange = (sym: string) => { const nextSettings = { ...settings, currencySymbol: sym }; setSettings(nextSettings); syncInBackground(() => syncSettingsToSupabase(nextSettings), 'la configuración'); };
   const handleThemeChange = (theme: AppSettings['theme']) => { const nextSettings = { ...settings, theme }; setSettings(nextSettings); syncInBackground(() => syncSettingsToSupabase(nextSettings), 'el tema visual'); };
   const handleImportFullData = (imported: { transactions: Transaction[]; categories: Category[]; budgets: MonthlyBudget[]; settings: AppSettings }) => { setTransactions(imported.transactions); setCategories(imported.categories); setBudgets(imported.budgets); setSettings({ ...DEFAULT_SETTINGS, ...imported.settings }); };
@@ -115,6 +121,7 @@ export default function App() {
       {activeTab === 'budgets' && <><FinancialIntelligence currentMonthKey={currentMonthKey} budgetTarget={currentBudget.totalTarget} transactions={monthTransactions} currencySymbol={settings.currencySymbol} /><div className="mt-6"><BudgetOverview currentMonthKey={currentMonthKey} monthlyBudget={currentBudget} transactions={monthTransactions} categories={categories} currencySymbol={settings.currencySymbol} onUpdateBudget={handleUpdateBudget} /></div></>}
       {activeTab === 'analytics' && <><AnalyticsCharts transactions={monthTransactions} categories={categories} currencySymbol={settings.currencySymbol} /><HistoricalAnalysis transactions={transactions} currencySymbol={settings.currencySymbol} /><div className="mt-6"><FinancialGoals transactions={transactions} currencySymbol={settings.currencySymbol} /></div></>}
       {activeTab === 'patrimony' && <Patrimony items={patrimonyItems} snapshots={netWorthSnapshots} currencySymbol={settings.currencySymbol} onAdd={handleAddPatrimony} onUpdate={handleUpdatePatrimony} onDelete={handleDeletePatrimony} />}
+      {activeTab === 'commitments' && <FutureCommitments commitments={futureCommitments} installmentPlans={installmentPlans} subscriptions={subscriptions} transactions={transactions} categories={categories} cards={cards} currencySymbol={settings.currencySymbol} onAdd={handleAddCommitment} onUpdate={handleUpdateCommitment} onDelete={handleDeleteCommitment} />}
       {activeTab === 'cards' && <CardsAndInstallments cards={cards} installmentPlans={installmentPlans} transactions={transactions} currentMonthKey={currentMonthKey} currencySymbol={settings.currencySymbol} onAddCard={handleAddCard} onUpdateCard={handleUpdateCard} onDeleteCard={handleDeleteCard} />}
       {activeTab === 'subscriptions' && <Subscriptions subscriptions={subscriptions} categories={categories} cards={cards} transactions={transactions} currentMonthKey={currentMonthKey} currencySymbol={settings.currencySymbol} onAdd={handleAddSubscription} onUpdate={handleUpdateSubscription} onDelete={handleDeleteSubscription} />}
       {activeTab === 'categories' && <CategoryManager categories={categories} onAddCategory={handleAddCategory} onUpdateCategory={handleUpdateCategory} onDeleteCategory={handleDeleteCategory} />}
