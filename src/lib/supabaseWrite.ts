@@ -142,4 +142,19 @@ export async function syncSettingsToSupabase(settings: AppSettings, enqueueOnAtt
 
 export async function syncPatrimonyItemToSupabase(item: PatrimonyItem): Promise<void> { await withRetry(async () => { const userId = await getAuthenticatedUserId(); if (!supabase) throw new Error('Supabase no está configurado.'); const { error } = await supabase.from('calculator_assets').upsert({ id: item.id, user_id: userId, name: item.name, type: item.type, category: item.category, value: item.value, valuation_date: item.valuationDate, notes: item.notes ?? null, created_at: item.createdAt, updated_at: item.updatedAt }, { onConflict: 'id' }); if (error) throw new Error(`Patrimonio: ${error.message}`); }, 'el patrimonio'); }
 export async function deletePatrimonyItemFromSupabase(id: string): Promise<void> { await withRetry(async () => { const userId = await getAuthenticatedUserId(); if (!supabase) throw new Error('Supabase no está configurado.'); const { error } = await supabase.from('calculator_assets').delete().eq('id', id).eq('user_id', userId); if (error) throw new Error(`Eliminación del patrimonio: ${error.message}`); }, 'la eliminación del patrimonio'); }
-export async function syncNetWorthSnapshotToSupabase(snapshot: NetWorthSnapshot): Promise<void> { await withRetry(async () => { const userId = await getAuthenticatedUserId(); if (!supabase) throw new Error('Supabase no está configurado.'); const { error } = await supabase.from('calculator_net_worth_snapshots').upsert({ id: snapshot.id, user_id: userId, snapshot_date: snapshot.snapshotDate, total_assets: snapshot.totalAssets, total_liabilities: snapshot.totalLiabilities, net_worth: snapshot.netWorth, created_at: snapshot.createdAt }, { onConflict: 'user_id,snapshot_date' }); if (error) throw new Error(`Historial patrimonial: ${error.message}`); }, 'el historial patrimonial'); }
+
+const normalizeSnapshotId = (id: string): string => {
+  const uuid = id.startsWith('snapshot-') ? id.slice('snapshot-'.length) : id;
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (uuidPattern.test(uuid)) return uuid;
+  return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : id;
+};
+
+export async function syncNetWorthSnapshotToSupabase(snapshot: NetWorthSnapshot): Promise<void> {
+  await withRetry(async () => {
+    const userId = await getAuthenticatedUserId();
+    if (!supabase) throw new Error('Supabase no está configurado.');
+    const { error } = await supabase.from('calculator_net_worth_snapshots').upsert({ id: normalizeSnapshotId(snapshot.id), user_id: userId, snapshot_date: snapshot.snapshotDate, total_assets: snapshot.totalAssets, total_liabilities: snapshot.totalLiabilities, net_worth: snapshot.netWorth, created_at: snapshot.createdAt }, { onConflict: 'user_id,snapshot_date' });
+    if (error) throw new Error(`Historial patrimonial: ${error.message}`);
+  }, 'el historial patrimonial');
+}
