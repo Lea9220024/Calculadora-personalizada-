@@ -1,72 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap');
 @import "tailwindcss";
 
-/* C.R.E.A.M. — tema claro: superficies claras + contraste alto. */
-.theme-light body { background: #f4f4f5; color: #18181b; }
-.theme-light .bg-black { background-color: #f4f4f5 !important; }
-.theme-light .bg-zinc-950 { background-color: #ffffff !important; }
-.theme-light .bg-zinc-950\/40 { background-color: #fafafa !important; }
-.theme-light .bg-zinc-950\/60 { background-color: #fafafa !important; }
+/* C.R.E.A.M. — Sovereign Financial Intelligence
+   Capa exclusivamente visual. No altera datos, cálculos ni persistencia. */
+:root {
+  --cream-bg: #0f131d;
+  --cream-surface: #171b26;
+  --cream-surface-2: #1c1f2a;
+  --cream-surface-3: #262a35;
+  --cream-border: rgba(134, 148, 138, .22);
+  --cream-text: #dfe2f1;
+  --cream-muted: #9aa6a0;
+  --cream-primary: #10b981;
+  --cream-primary-bright: #4edea3;
+  --cream-danger: #f43f5e;
+  --cream-warning: #f59e0b;
+  --cream-ai: #a78bfa;
+  --cream-radius: 16px;
+}
+
+html, body, #root { min-height: 100%; width: 100%; }
+html { min-height: 100%; }
+body {
+  margin: 0;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  background: var(--cream-bg);
+  color: var(--cream-text);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-feature-settings: "tnum" 1, "cv02" 1, "cv03" 1;
+}
+
+/* Jerarquía Stitch: títulos ejecutivos + números financieros tabulares. */
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Superficies premium sin tocar la estructura funcional existente. */
+.bg-black { background-color: var(--cream-bg) !important; }
+.bg-zinc-950 { background-color: var(--cream-surface) !important; }
+.bg-zinc-900 { background-color: var(--cream-surface-2) !important; }
+.bg-zinc-800 { background-color: var(--cream-surface-3) !important; }
+.border-zinc-800,
+.border-zinc-800\/80,
+.border-zinc-700 { border-color: var(--cream-border) !important; }
+
+/* Cards: glassmorphic precision inspirada en Stitch. */
+.rounded-xl, .rounded-2xl {
+  border-radius: var(--cream-radius);
+}
+
+.shadow-xl { box-shadow: 0 18px 45px rgba(0, 0, 0, .18) !important; }
+.shadow-lg { box-shadow: 0 12px 32px rgba(0, 0, 0, .14) !important; }
+
+/* Métricas: precisión visual para importes financieros. */
+.text-3xl, .text-4xl, .text-5xl, .text-6xl,
+.tabular-nums {
+  font-family: Inter, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Emerald como lenguaje semántico de crecimiento/control. */
+.text-emerald-400 { color: var(--cream-primary-bright) !important; }
+.text-emerald-500 { color: var(--cream-primary) !important; }
+.bg-emerald-500 { background-color: var(--cream-primary) !important; }
+.bg-emerald-400 { background-color: var(--cream-primary-bright) !important; }
+.border-emerald-500\/30,
+.border-emerald-500\/20 { border-color: rgba(16,185,129,.30) !important; }
+
+/* Inputs y controles con tratamiento institucional. */
+input, textarea, select {
+  font-family: Inter, system-ui, sans-serif;
+}
+
+button {
+  font-family: Inter, system-ui, sans-serif;
+}
+
+/* C.R.E.A.M. — Light Mode sofisticado de Stitch. */
+.theme-light {
+  --cream-bg: #f8fafc;
+  --cream-surface: #ffffff;
+  --cream-surface-2: #ffffff;
+  --cream-surface-3: #f1f5f9;
+  --cream-border: #e2e8f0;
+  --cream-text: #0f172a;
+  --cream-muted: #64748b;
+}
+
+.theme-light body { background: #f8fafc; color: #0f172a; }
+.theme-light .bg-black { background-color: #f8fafc !important; }
+.theme-light .bg-zinc-950,
 .theme-light .bg-zinc-900,
 .theme-light .bg-zinc-900\/90,
 .theme-light .bg-zinc-900\/40 { background-color: #ffffff !important; }
-.theme-light .bg-zinc-900\/60 { background-color: #f4f4f5 !important; }
-.theme-light .bg-zinc-800 { background-color: #e4e4e7 !important; }
-.theme-light .bg-zinc-800\/60 { background-color: #f4f4f5 !important; }
+.theme-light .bg-zinc-950\/40,
+.theme-light .bg-zinc-950\/60 { background-color: #f8fafc !important; }
+.theme-light .bg-zinc-900\/60,
+.theme-light .bg-zinc-800\/60 { background-color: #f1f5f9 !important; }
+.theme-light .bg-zinc-800 { background-color: #f1f5f9 !important; }
 .theme-light .hover\:bg-zinc-800:hover,
-.theme-light .hover\:bg-zinc-800\/60:hover { background-color: #e4e4e7 !important; }
-.theme-light .hover\:bg-zinc-900\/60:hover { background-color: #e4e4e7 !important; }
+.theme-light .hover\:bg-zinc-800\/60:hover,
+.theme-light .hover\:bg-zinc-900\/60:hover { background-color: #e2e8f0 !important; }
 
-/* Paleta tipográfica de alto contraste para TODO el modo día. */
-.theme-light .text-zinc-100 { color: #18181b !important; }
-.theme-light .text-zinc-200 { color: #27272a !important; }
-.theme-light .text-zinc-300 { color: #3f3f46 !important; }
-.theme-light .text-zinc-400 { color: #52525b !important; }
-.theme-light .text-zinc-500 { color: #52525b !important; }
-.theme-light .text-white { color: #18181b !important; }
-.theme-light .text-gray-400 { color: #52525b !important; }
-.theme-light .text-gray-500 { color: #52525b !important; }
-.theme-light .text-gray-600 { color: #3f3f46 !important; }
+.theme-light .text-zinc-100,
+.theme-light .text-white { color: #0f172a !important; }
+.theme-light .text-zinc-200 { color: #1e293b !important; }
+.theme-light .text-zinc-300 { color: #334155 !important; }
+.theme-light .text-zinc-400,
+.theme-light .text-zinc-500,
+.theme-light .text-gray-400,
+.theme-light .text-gray-500 { color: #64748b !important; }
+.theme-light .text-gray-600 { color: #475569 !important; }
 .theme-light input,
 .theme-light textarea,
-.theme-light select { color: #18181b !important; }
+.theme-light select { color: #0f172a !important; background-color: #ffffff !important; }
 .theme-light input::placeholder,
-.theme-light textarea::placeholder { color: #71717a !important; opacity: 1; }
-.theme-light option { color: #18181b; background: #ffffff; }
+.theme-light textarea::placeholder { color: #94a3b8 !important; opacity: 1; }
+.theme-light option { color: #0f172a; background: #ffffff; }
 
-.theme-light .border-zinc-800 { border-color: #d4d4d8 !important; }
-.theme-light .border-zinc-800\/80 { border-color: rgba(161,161,170,.75) !important; }
-.theme-light .border-zinc-700 { border-color: #a1a1aa !important; }
-.theme-light .divide-zinc-800\/80 > :not([hidden]) ~ :not([hidden]) { border-color: #d4d4d8 !important; }
+.theme-light .border-zinc-800 { border-color: #e2e8f0 !important; }
+.theme-light .border-zinc-800\/80 { border-color: rgba(226,232,240,.9) !important; }
+.theme-light .border-zinc-700 { border-color: #cbd5e1 !important; }
+.theme-light .divide-zinc-800\/80 > :not([hidden]) ~ :not([hidden]) { border-color: #e2e8f0 !important; }
 
-/* Contraste específico de las tarjetas principales. */
+/* Sombras atmosféricas del diseño claro. */
+.theme-light .shadow-xl { box-shadow: 0 18px 45px rgba(15,23,42,.06) !important; }
+.theme-light .shadow-lg { box-shadow: 0 12px 32px rgba(15,23,42,.05) !important; }
+
+/* Cards existentes conservan sus IDs y comportamiento; solo cambia la presentación. */
 .theme-light #card-income,
 .theme-light #card-expenses,
 .theme-light #card-balance,
 .theme-light #card-budget {
   background-color: #ffffff !important;
-  color: #18181b !important;
-  border-color: #d4d4d8 !important;
-  box-shadow: 0 4px 16px rgba(24,24,27,.08) !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 8px 28px rgba(15,23,42,.055) !important;
 }
 
-/* Contraste específico del listado de movimientos. */
 .theme-light [id^="tx-item-"] {
   background-color: #ffffff !important;
-  color: #18181b !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
 }
-.theme-light [id^="tx-item-"] .text-zinc-100 { color: #18181b !important; }
-.theme-light [id^="tx-item-"] .text-zinc-300 { color: #3f3f46 !important; }
-.theme-light [id^="tx-item-"] .text-zinc-400 { color: #52525b !important; }
-.theme-light [id^="tx-item-"] .text-zinc-500 { color: #52525b !important; }
+.theme-light [id^="tx-item-"] .text-zinc-100 { color: #0f172a !important; }
+.theme-light [id^="tx-item-"] .text-zinc-300 { color: #334155 !important; }
+.theme-light [id^="tx-item-"] .text-zinc-400,
+.theme-light [id^="tx-item-"] .text-zinc-500 { color: #64748b !important; }
 .theme-light [id^="tx-item-"] .bg-zinc-900 { background-color: #ffffff !important; }
-.theme-light [id^="tx-item-"] .bg-zinc-800 { background-color: #e4e4e7 !important; }
-
-html, body, #root {
-  min-height: 100%;
-  width: 100%;
-}
-html { min-height: 100%; }
-body { margin: 0; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+.theme-light [id^="tx-item-"] .bg-zinc-800 { background-color: #f1f5f9 !important; }
 
 /* La aplicación permite vertical y horizontal; no fija una orientación. */
 @media (orientation: landscape) {
