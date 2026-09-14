@@ -26,7 +26,7 @@ const writeQueue = (queue: PendingOperation[]) => {
 
 const operationId = (type: PendingOperation['type'], key: string) => `${type}:${key}`;
 
-export function enqueuePendingSupabaseSync(operation: Omit<PendingOperation, 'id'>) {
+export function enqueuePendingSupabaseSync(operation: Omit<PendingOperation, 'id'>): string {
   const key = operation.type === 'upsert_transaction' || operation.type === 'upsert_category'
     ? operation.payload.id
     : operation.type === 'upsert_budget'
@@ -37,6 +37,7 @@ export function enqueuePendingSupabaseSync(operation: Omit<PendingOperation, 'id
   const id = operationId(operation.type, key);
   const queue = readQueue();
   writeQueue([...queue.filter(item => item.id !== id), { ...operation, id } as PendingOperation]);
+  return id;
 }
 
 export function removePendingSupabaseSync(id: string) {
