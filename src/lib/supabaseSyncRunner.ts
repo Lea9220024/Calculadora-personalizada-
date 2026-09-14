@@ -22,22 +22,22 @@ export async function flushPendingSupabaseSync() {
     try {
       switch (operation.type) {
         case 'upsert_transaction':
-          await syncTransactionToSupabase(operation.payload);
+          await syncTransactionToSupabase(operation.payload, false);
           break;
         case 'delete_transaction':
-          await deleteTransactionFromSupabase(operation.payload.id);
+          await deleteTransactionFromSupabase(operation.payload.id, false);
           break;
         case 'upsert_category':
-          await syncCategoryToSupabase(operation.payload);
+          await syncCategoryToSupabase(operation.payload, false);
           break;
         case 'delete_category':
-          await deleteCategoryFromSupabase(operation.payload.id);
+          await deleteCategoryFromSupabase(operation.payload.id, false);
           break;
         case 'upsert_budget':
           await syncBudgetToSupabase(operation.payload);
           break;
         case 'upsert_settings':
-          await syncSettingsToSupabase(operation.payload);
+          await syncSettingsToSupabase(operation.payload, false);
           break;
       }
       removePendingSupabaseSync(operation.id);
