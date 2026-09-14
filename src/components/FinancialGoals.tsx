@@ -66,14 +66,213 @@ export const FinancialGoals: React.FC<FinancialGoalsProps> = ({ transactions, cu
   };
   const deleteGoal = (id:string) => { if(window.confirm('¿Eliminar este objetivo financiero?')) setGoals(prev=>prev.filter(g=>g.id!==id)); };
 
-  return <section className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-5 sm:p-6 shadow-xl shadow-black/20">
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div><div className="flex items-center gap-2 text-orange-400"><Target size={20}/><span className="text-xs font-semibold uppercase tracking-[0.18em]">5.23 · Planificación</span></div><h2 className="mt-1 text-xl font-semibold">Objetivos financieros</h2><p className="mt-1 text-sm text-zinc-500">Convertí lo que querés lograr en una meta con fecha y ritmo de ahorro.</p></div>
-      <div className="flex flex-wrap gap-2"><button onClick={()=>{setSimulatorOpen(true);setSimGoalId(goals[0]?.id||'');}} disabled={goals.length===0} className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-700 px-4 py-2.5 text-sm font-semibold text-zinc-200 transition hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"><Calculator size={17}/> Simular</button><button onClick={openNew} className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-orange-400"><Plus size={17}/> Nuevo objetivo</button></div>
+  return <section className="space-y-6">
+    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-400">PLANIFICACIÓN ESTRATÉGICA</p>
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1 font-['Plus_Jakarta_Sans']">Objetivos Financieros</h2>
+        <p className="text-sm text-[#9AA6A0] mt-1">Convertí lo que querés lograr en una meta de capital cuantificada con fecha límite y ritmo de acumulación.</p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button onClick={()=>{setSimulatorOpen(true);setSimGoalId(goals[0]?.id||'');}} disabled={goals.length===0} className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-[#171B26] px-4 py-2.5 text-xs font-extrabold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40">
+          <Calculator size={15} className="text-emerald-400" /> Simular Escenarios
+        </button>
+        <button onClick={openNew} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-extrabold text-black transition hover:bg-emerald-400">
+          <Plus size={15} strokeWidth={3} /> Nuevo Objetivo
+        </button>
+      </div>
     </div>
-    {goals.length>0 && <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3"><div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4"><p className="text-xs text-zinc-500">Objetivos</p><p className="mt-1 text-lg font-semibold">{goals.length}</p></div><div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4"><p className="text-xs text-zinc-500">Acumulado</p><p className="mt-1 text-lg font-semibold text-emerald-400">{formatMoney(summary.saved,currencySymbol)}</p></div><div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4"><p className="text-xs text-zinc-500">Falta alcanzar</p><p className="mt-1 text-lg font-semibold text-orange-400">{formatMoney(Math.max(0,summary.target-summary.saved),currencySymbol)}</p></div></div>}
-    {goals.length===0 ? <div className="mt-5 rounded-xl border border-dashed border-zinc-800 p-8 text-center"><Target className="mx-auto text-zinc-700" size={32}/><p className="mt-3 font-medium text-zinc-300">Todavía no tenés objetivos creados.</p><p className="mt-1 text-sm text-zinc-500">Podés empezar con un viaje, fondo de emergencia, mudanza o cualquier meta personal.</p></div> : <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">{goals.map(goal=>{const remaining=Math.max(0,goal.targetAmount-goal.currentAmount);const progress=Math.min(100,(goal.currentAmount/goal.targetAmount)*100);const days=daysUntil(goal.targetDate);const months=monthsUntil(goal.targetDate);const monthlyRequired=remaining/months;const dailyRequired=days>0?remaining/days:remaining;const completed=remaining<=0;const overdue=!completed&&days<0;const onTrack=!completed&&!overdue&&monthlySurplus>0&&monthlySurplus>=monthlyRequired;const status=completed?'Completado':overdue?'Vencido':onTrack?'En ritmo':'Requiere ajuste';const StatusIcon=completed||onTrack?CheckCircle2:AlertTriangle;return <article key={goal.id} className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5"><div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold">{goal.name}</h3><div className="mt-1 flex items-center gap-2 text-xs text-zinc-500"><CalendarDays size={14}/> Meta: {new Date(`${goal.targetDate}T00:00:00`).toLocaleDateString('es-AR')}</div></div><div className="flex gap-1"><button onClick={()=>openEdit(goal)} aria-label="Editar objetivo" className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"><Pencil size={16}/></button><button onClick={()=>deleteGoal(goal.id)} aria-label="Eliminar objetivo" className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-800 hover:text-red-400"><Trash2 size={16}/></button></div></div><div className="mt-5 flex items-end justify-between gap-3"><div><p className="text-2xl font-bold">{formatMoney(goal.currentAmount,currencySymbol)}</p><p className="text-xs text-zinc-500">de {formatMoney(goal.targetAmount,currencySymbol)}</p></div><span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${completed?'bg-emerald-500/10 text-emerald-400':overdue?'bg-red-500/10 text-red-400':onTrack?'bg-emerald-500/10 text-emerald-400':'bg-orange-500/10 text-orange-400'}`}><StatusIcon size={13}/> {status}</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-zinc-800"><div className="h-full rounded-full bg-orange-500 transition-all" style={{width:`${progress}%`}}/></div><div className="mt-2 flex justify-between text-xs"><span className="text-zinc-400">{progress.toFixed(0)}% alcanzado</span><span className="text-zinc-500">Faltan {formatMoney(remaining,currencySymbol)}</span></div>{!completed&&<div className="mt-4 grid grid-cols-2 gap-2"><div className="rounded-lg bg-zinc-950 p-3"><p className="text-[11px] text-zinc-500">Ahorro mensual requerido</p><p className="mt-1 text-sm font-semibold">{formatMoney(monthlyRequired,currencySymbol)}</p></div><div className="rounded-lg bg-zinc-950 p-3"><p className="text-[11px] text-zinc-500">Ahorro diario requerido</p><p className="mt-1 text-sm font-semibold">{formatMoney(dailyRequired,currencySymbol)}</p></div></div>}<div className="mt-4 flex items-center gap-2 text-xs text-zinc-500"><WalletCards size={14}/>{completed?'Objetivo alcanzado.':days>=0?`${days} días restantes`:`Vencido hace ${Math.abs(days)} días`}</div></article>})}</div>}
-    {isOpen&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" onMouseDown={e=>{if(e.target===e.currentTarget)setIsOpen(false)}}><form onSubmit={saveGoal} className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl"><h3 className="text-lg font-semibold">{editingId?'Editar objetivo':'Nuevo objetivo'}</h3><div className="mt-5 space-y-4"><label className="block"><span className="text-xs text-zinc-500">Nombre</span><input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Ej. Viaje" className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-sm outline-none focus:border-orange-500"/></label><div className="grid grid-cols-2 gap-3"><label className="block"><span className="text-xs text-zinc-500">Monto objetivo</span><input required min="1" type="number" value={form.targetAmount} onChange={e=>setForm({...form,targetAmount:e.target.value})} className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-sm outline-none focus:border-orange-500"/></label><label className="block"><span className="text-xs text-zinc-500">Ya acumulado</span><input min="0" type="number" value={form.currentAmount} onChange={e=>setForm({...form,currentAmount:e.target.value})} className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-sm outline-none focus:border-orange-500"/></label></div><label className="block"><span className="text-xs text-zinc-500">Fecha objetivo</span><input required type="date" value={form.targetDate} onChange={e=>setForm({...form,targetDate:e.target.value})} className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-sm outline-none focus:border-orange-500"/></label></div><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={()=>setIsOpen(false)} className="rounded-xl px-4 py-2 text-sm text-zinc-400 hover:bg-zinc-900">Cancelar</button><button type="submit" className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-black hover:bg-orange-400">Guardar objetivo</button></div></form></div>}
-    {simulatorOpen&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" onMouseDown={e=>{if(e.target===e.currentTarget)setSimulatorOpen(false)}}><div className="w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><div className="flex items-center gap-2 text-orange-400"><Calculator size={19}/><span className="text-xs font-semibold uppercase tracking-[0.18em]">5.24 · Simulador</span></div><h3 className="mt-1 text-xl font-semibold">Escenarios financieros</h3><p className="mt-1 text-sm text-zinc-500">Probá decisiones sin modificar tus movimientos ni tus objetivos.</p></div><button onClick={()=>setSimulatorOpen(false)} className="text-zinc-500 hover:text-zinc-200">✕</button></div><div className="mt-5 space-y-4"><label className="block"><span className="text-xs text-zinc-500">Objetivo</span><select value={simGoalId} onChange={e=>setSimGoalId(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-sm outline-none focus:border-orange-500">{goals.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select></label><label className="block"><span className="text-xs text-zinc-500">Ahorro mensual adicional</span><input type="number" min="0" value={simMonthlySaving} onChange={e=>setSimMonthlySaving(e.target.value)} placeholder="Dejar en 0 para usar tu superávit actual" className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-sm outline-none focus:border-orange-500"/></label><label className="block"><span className="text-xs text-zinc-500">Reducción de gastos</span><div className="mt-1 flex items-center gap-3"><input type="range" min="0" max="50" step="1" value={simExpenseReduction} onChange={e=>setSimExpenseReduction(e.target.value)} className="w-full accent-orange-500"/><span className="w-12 text-right text-sm font-semibold">{simExpenseReduction}%</span></div></label></div>{simulation&&<div className="mt-5 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4"><div className="grid grid-cols-2 gap-3"><div><p className="text-xs text-zinc-500">Ahorro mensual simulado</p><p className="mt-1 text-lg font-semibold text-emerald-400">{formatMoney(simulation.planned,currencySymbol)}</p></div><div><p className="text-xs text-zinc-500">Necesario para la fecha</p><p className="mt-1 text-lg font-semibold">{formatMoney(simulation.requiredMonthly,currencySymbol)}</p></div></div>{simulation.monthsNeeded!==null?<><div className="mt-4 rounded-lg bg-zinc-950 p-3"><p className="text-xs text-zinc-500">Llegarías al objetivo aproximadamente en</p><p className="mt-1 font-semibold">{simulation.projectedDate?.toLocaleDateString('es-AR')} ({simulation.monthsNeeded} {simulation.monthsNeeded===1?'mes':'meses'})</p></div><div className="mt-3 flex items-center gap-2 text-xs ${simulation.monthsNeeded*30.4375<=simulation.targetDays?'text-emerald-400':'text-orange-400'}"><TrendingDown size={14}/> {simulation.monthsNeeded*30.4375<=simulation.targetDays?'Escenario compatible con la fecha objetivo.':'Con este escenario llegarías después de la fecha objetivo.'}</div></>:<div className="mt-4 flex items-center gap-2 text-xs text-orange-400"><AlertTriangle size={14}/> No hay ahorro mensual suficiente para proyectar una fecha.</div>}</div>}<p className="mt-4 text-[11px] text-zinc-600">La simulación es informativa: no cambia movimientos, presupuestos ni objetivos guardados.</p></div></div>}
+
+    {goals.length>0 && (
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-zinc-800 bg-[#171B26] p-5 shadow-sm">
+          <p className="text-[10px] uppercase font-bold text-[#9AA6A0]">Objetivos Trazados</p>
+          <p className="mt-1 text-2xl sm:text-3xl font-extrabold text-white font-mono">{goals.length}</p>
+        </div>
+        <div className="rounded-2xl border border-zinc-800 bg-[#171B26] p-5 shadow-sm">
+          <p className="text-[10px] uppercase font-bold text-[#9AA6A0]">Capital Acumulado</p>
+          <p className="mt-1 text-xl sm:text-2xl font-extrabold text-emerald-400 font-mono">{formatMoney(summary.saved,currencySymbol)}</p>
+        </div>
+        <div className="rounded-2xl border border-zinc-800 bg-[#171B26] p-5 shadow-sm">
+          <p className="text-[10px] uppercase font-bold text-[#9AA6A0]">Faltante por Consolidar</p>
+          <p className="mt-1 text-xl sm:text-2xl font-extrabold text-white font-mono">{formatMoney(Math.max(0,summary.target-summary.saved),currencySymbol)}</p>
+        </div>
+      </div>
+    )}
+
+    {goals.length===0 ? (
+      <div className="rounded-2xl border border-dashed border-zinc-800 bg-[#171B26]/50 p-10 text-center">
+        <Target className="mx-auto text-emerald-400/60 mb-3" size={36}/>
+        <p className="font-bold text-white">Todavía no tenés metas financieras registradas.</p>
+        <p className="mt-1 text-xs text-[#9AA6A0]">Fondo de reserva, inversiones inmobiliarias, retiro o proyectos de capital.</p>
+      </div>
+    ) : (
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {goals.map(goal=>{
+          const remaining=Math.max(0,goal.targetAmount-goal.currentAmount);
+          const progress=Math.min(100,(goal.currentAmount/goal.targetAmount)*100);
+          const days=daysUntil(goal.targetDate);
+          const months=monthsUntil(goal.targetDate);
+          const monthlyRequired=remaining/months;
+          const dailyRequired=days>0?remaining/days:remaining;
+          const completed=remaining<=0;
+          const overdue=!completed&&days<0;
+          const onTrack=!completed&&!overdue&&monthlySurplus>0&&monthlySurplus>=monthlyRequired;
+          const status=completed?'Completado':overdue?'Vencido':onTrack?'En ritmo':'Requiere ajuste';
+          const StatusIcon=completed||onTrack?CheckCircle2:AlertTriangle;
+
+          return (
+            <article key={goal.id} className="rounded-2xl border border-zinc-800 bg-[#171B26] p-5 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-extrabold text-white font-['Plus_Jakarta_Sans'] text-base">{goal.name}</h3>
+                  <div className="mt-1 flex items-center gap-2 text-xs text-[#9AA6A0]">
+                    <CalendarDays size={13} className="text-emerald-400"/> Fecha meta: {new Date(`${goal.targetDate}T00:00:00`).toLocaleDateString('es-AR')}
+                  </div>
+                </div>
+                <div className="flex gap-1">
+                  <button onClick={()=>openEdit(goal)} aria-label="Editar objetivo" className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><Pencil size={15}/></button>
+                  <button onClick={()=>deleteGoal(goal.id)} aria-label="Eliminar objetivo" className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-rose-400"><Trash2 size={15}/></button>
+                </div>
+              </div>
+
+              <div className="mt-5 flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-2xl font-extrabold text-white font-mono">{formatMoney(goal.currentAmount,currencySymbol)}</p>
+                  <p className="text-xs text-[#9AA6A0] mt-0.5">Meta: {formatMoney(goal.targetAmount,currencySymbol)}</p>
+                </div>
+                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${completed?'bg-emerald-500/10 text-emerald-400':overdue?'bg-rose-500/10 text-rose-400':onTrack?'bg-emerald-500/10 text-emerald-400':'bg-amber-500/10 text-amber-400'}`}>
+                  <StatusIcon size={13}/> {status}
+                </span>
+              </div>
+
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#262A35]">
+                <div className="h-full rounded-full bg-emerald-500 transition-all duration-300" style={{width:`${progress}%`}}/>
+              </div>
+
+              <div className="mt-2 flex justify-between text-xs font-mono">
+                <span className="text-emerald-400 font-bold">{progress.toFixed(0)}% consolidado</span>
+                <span className="text-[#9AA6A0]">Faltan {formatMoney(remaining,currencySymbol)}</span>
+              </div>
+
+              {!completed && (
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div className="rounded-xl bg-[#1C1F2A] border border-zinc-800/80 p-3">
+                    <p className="text-[10px] uppercase font-bold text-[#9AA6A0]">Ahorro Mensual Req.</p>
+                    <p className="mt-1 text-sm font-extrabold text-white font-mono">{formatMoney(monthlyRequired,currencySymbol)}</p>
+                  </div>
+                  <div className="rounded-xl bg-[#1C1F2A] border border-zinc-800/80 p-3">
+                    <p className="text-[10px] uppercase font-bold text-[#9AA6A0]">Ahorro Diario Req.</p>
+                    <p className="mt-1 text-sm font-extrabold text-white font-mono">{formatMoney(dailyRequired,currencySymbol)}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4 flex items-center gap-2 text-xs text-[#9AA6A0]">
+                <WalletCards size={14} className="text-emerald-400"/>
+                {completed?'Objetivo alcanzado con éxito.':days>=0?`${days} días restantes para la fecha límite`:`Vencido hace ${Math.abs(days)} días`}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    )}
+
+    {isOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onMouseDown={e=>{if(e.target===e.currentTarget)setIsOpen(false)}}>
+        <form onSubmit={saveGoal} className="w-full max-w-md rounded-2xl border border-zinc-800 bg-[#171B26] p-6 shadow-2xl">
+          <h3 className="text-lg font-extrabold text-white font-['Plus_Jakarta_Sans']">{editingId?'Editar Objetivo':'Nuevo Objetivo Financiero'}</h3>
+          <div className="mt-5 space-y-4">
+            <label className="block">
+              <span className="text-xs font-bold text-zinc-300">Nombre del Objetivo</span>
+              <input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Ej. Fondo de Emergencia 6 Meses" className="mt-1 w-full rounded-xl border border-zinc-800 bg-[#1C1F2A] px-3 py-2.5 text-xs text-white outline-none focus:border-emerald-500 font-semibold"/>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-xs font-bold text-zinc-300">Monto Meta</span>
+                <input required min="1" type="number" value={form.targetAmount} onChange={e=>setForm({...form,targetAmount:e.target.value})} className="mt-1 w-full rounded-xl border border-zinc-800 bg-[#1C1F2A] px-3 py-2.5 text-xs text-white font-mono outline-none focus:border-emerald-500"/>
+              </label>
+              <label className="block">
+                <span className="text-xs font-bold text-zinc-300">Capital Acumulado</span>
+                <input min="0" type="number" value={form.currentAmount} onChange={e=>setForm({...form,currentAmount:e.target.value})} className="mt-1 w-full rounded-xl border border-zinc-800 bg-[#1C1F2A] px-3 py-2.5 text-xs text-white font-mono outline-none focus:border-emerald-500"/>
+              </label>
+            </div>
+            <label className="block">
+              <span className="text-xs font-bold text-zinc-300">Fecha Límite</span>
+              <input required type="date" value={form.targetDate} onChange={e=>setForm({...form,targetDate:e.target.value})} className="mt-1 w-full rounded-xl border border-zinc-800 bg-[#1C1F2A] px-3 py-2.5 text-xs text-white outline-none focus:border-emerald-500"/>
+            </label>
+          </div>
+          <div className="mt-6 flex justify-end gap-2">
+            <button type="button" onClick={()=>setIsOpen(false)} className="rounded-xl px-4 py-2 text-xs font-bold text-zinc-400 hover:text-white">Cancelar</button>
+            <button type="submit" className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-black hover:bg-emerald-400">Guardar Objetivo</button>
+          </div>
+        </form>
+      </div>
+    )}
+
+    {simulatorOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onMouseDown={e=>{if(e.target===e.currentTarget)setSimulatorOpen(false)}}>
+        <div className="w-full max-w-lg rounded-2xl border border-zinc-800 bg-[#171B26] p-6 shadow-2xl">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-emerald-400"><Calculator size={18}/><span className="text-xs font-bold uppercase tracking-[0.18em]">SIMULADOR DE CAPITAL</span></div>
+              <h3 className="mt-1 text-xl font-extrabold text-white font-['Plus_Jakarta_Sans']">Proyección de Escenarios</h3>
+              <p className="mt-1 text-xs text-[#9AA6A0]">Simulá incrementos de ahorro y optimización de gastos sin alterar tus registros contables.</p>
+            </div>
+            <button onClick={()=>setSimulatorOpen(false)} className="text-zinc-400 hover:text-white">✕</button>
+          </div>
+          <div className="mt-5 space-y-4">
+            <label className="block">
+              <span className="text-xs font-bold text-zinc-300">Objetivo a Analizar</span>
+              <select value={simGoalId} onChange={e=>setSimGoalId(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-800 bg-[#1C1F2A] px-3 py-2.5 text-xs text-white outline-none focus:border-emerald-500">
+                {goals.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-xs font-bold text-zinc-300">Ahorro Mensual Adicional Voluntario</span>
+              <input type="number" min="0" value={simMonthlySaving} onChange={e=>setSimMonthlySaving(e.target.value)} placeholder="0 (usa superávit actual de la cartera)" className="mt-1 w-full rounded-xl border border-zinc-800 bg-[#1C1F2A] px-3 py-2.5 text-xs text-white font-mono outline-none focus:border-emerald-500"/>
+            </label>
+            <label className="block">
+              <span className="text-xs font-bold text-zinc-300">Reducción Simulada de Gastos Operativos</span>
+              <div className="mt-1 flex items-center gap-3">
+                <input type="range" min="0" max="50" step="1" value={simExpenseReduction} onChange={e=>setSimExpenseReduction(e.target.value)} className="w-full accent-emerald-500"/>
+                <span className="w-12 text-right text-xs font-extrabold text-emerald-400 font-mono">{simExpenseReduction}%</span>
+              </div>
+            </label>
+          </div>
+
+          {simulation && (
+            <div className="mt-5 rounded-xl border border-zinc-800 bg-[#1C1F2A] p-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[10px] uppercase font-bold text-[#9AA6A0]">Ahorro Mensual Simulado</p>
+                  <p className="mt-1 text-lg font-extrabold text-emerald-400 font-mono">{formatMoney(simulation.planned,currencySymbol)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase font-bold text-[#9AA6A0]">Necesario para la Fecha</p>
+                  <p className="mt-1 text-lg font-extrabold text-white font-mono">{formatMoney(simulation.requiredMonthly,currencySymbol)}</p>
+                </div>
+              </div>
+              {simulation.monthsNeeded!==null ? (
+                <>
+                  <div className="mt-4 rounded-xl bg-[#171B26] border border-zinc-800/80 p-3">
+                    <p className="text-xs text-[#9AA6A0]">Fecha estimada de cumplimiento:</p>
+                    <p className="mt-1 font-bold text-white text-sm font-mono">{simulation.projectedDate?.toLocaleDateString('es-AR')} ({simulation.monthsNeeded} {simulation.monthsNeeded===1?'mes':'meses'})</p>
+                  </div>
+                  <div className={`mt-3 flex items-center gap-2 text-xs font-semibold ${simulation.monthsNeeded*30.4375<=simulation.targetDays?'text-emerald-400':'text-amber-400'}`}>
+                    <TrendingDown size={14}/> {simulation.monthsNeeded*30.4375<=simulation.targetDays?'El plan simulado alcanza la meta dentro del plazo.':'Con este ritmo se superará la fecha estimada original.'}
+                  </div>
+                </>
+              ) : (
+                <div className="mt-4 flex items-center gap-2 text-xs text-amber-400">
+                  <AlertTriangle size={14}/> No hay superávit mensual proyectado para estimar la fecha.
+                </div>
+              )}
+            </div>
+          )}
+          <p className="mt-4 text-[11px] text-[#9AA6A0]">La simulación es un modelo de proyección: no altera saldos reales ni transacciones.</p>
+        </div>
+      </div>
+    )}
   </section>;
 };

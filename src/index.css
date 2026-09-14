@@ -80,54 +80,206 @@ button {
 
 /* C.R.E.A.M. — Light Mode sofisticado de Stitch. */
 .theme-light {
-  --cream-bg: #f8fafc;
+  --cream-bg: #f4f6f8;
+  --cream-sidebar: #ffffff;
   --cream-surface: #ffffff;
-  --cream-surface-2: #ffffff;
-  --cream-surface-3: #f1f5f9;
+  --cream-surface-2: #f8fafc;
+  --cream-surface-3: #edf2f7;
   --cream-border: #e2e8f0;
-  --cream-text: #0f172a;
+  --cream-text: #1e293b;
   --cream-muted: #64748b;
+  --cream-heading: #0f172a;
+  --cream-primary: #059669;
+  --cream-primary-bright: #10b981;
+  --cream-danger: #e11d48;
+  --cream-warning: #d97706;
+  --cream-ai: #7c3aed;
 }
 
-.theme-light body { background: #f8fafc; color: #0f172a; }
-.theme-light .bg-black { background-color: #f8fafc !important; }
+.theme-light,
+.theme-light body {
+  background-color: #f4f6f8 !important;
+  color: #1e293b !important;
+}
+
+/* 1. Superficies y Contenedores */
+.theme-light [class*="bg-[#0F131D]"],
+.theme-light [class*="bg-[#0f131d]"],
+.theme-light .bg-black {
+  background-color: #f4f6f8 !important;
+}
+
+.theme-light [class*="bg-[#121622]"],
+.theme-light [class*="bg-[#121622]"] {
+  background-color: #ffffff !important;
+}
+
+.theme-light [class*="bg-[#171B26]"],
+.theme-light [class*="bg-[#171b26]"],
 .theme-light .bg-zinc-950,
 .theme-light .bg-zinc-900,
 .theme-light .bg-zinc-900\/90,
-.theme-light .bg-zinc-900\/40 { background-color: #ffffff !important; }
-.theme-light .bg-zinc-950\/40,
-.theme-light .bg-zinc-950\/60 { background-color: #f8fafc !important; }
-.theme-light .bg-zinc-900\/60,
-.theme-light .bg-zinc-800\/60 { background-color: #f1f5f9 !important; }
-.theme-light .bg-zinc-800 { background-color: #f1f5f9 !important; }
-.theme-light .hover\:bg-zinc-800:hover,
-.theme-light .hover\:bg-zinc-800\/60:hover,
-.theme-light .hover\:bg-zinc-900\/60:hover { background-color: #e2e8f0 !important; }
+.theme-light .bg-zinc-900\/40 {
+  background-color: #ffffff !important;
+}
 
-.theme-light .text-zinc-100,
-.theme-light .text-white { color: #0f172a !important; }
-.theme-light .text-zinc-200 { color: #1e293b !important; }
-.theme-light .text-zinc-300 { color: #334155 !important; }
+.theme-light [class*="bg-[#1C1F2A]"],
+.theme-light [class*="bg-[#1c1f2a]"],
+.theme-light .bg-zinc-800 {
+  background-color: #f8fafc !important;
+}
+
+.theme-light [class*="bg-[#262A35]"],
+.theme-light [class*="bg-[#262a35]"] {
+  background-color: #e2e8f0 !important;
+}
+
+/* Superficies con transparencia */
+.theme-light [class*="bg-[#171B26]/80"],
+.theme-light [class*="bg-[#171b26]/80"],
+.theme-light [class*="bg-[#0F131D]/90"],
+.theme-light [class*="bg-[#0f131d]/90"] {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.theme-light [class*="bg-[#1C1F2A]/50"],
+.theme-light [class*="bg-[#1c1f2a]/50"] {
+  background-color: rgba(248, 250, 252, 0.75) !important;
+}
+
+.theme-light [class*="bg-[#1C1F2A]/80"],
+.theme-light [class*="bg-[#1c1f2a]/80"] {
+  background-color: rgba(248, 250, 252, 0.92) !important;
+}
+
+.theme-light .bg-zinc-950\/40,
+.theme-light .bg-zinc-950\/60 {
+  background-color: #f8fafc !important;
+}
+
+.theme-light .bg-zinc-900\/60,
+.theme-light .bg-zinc-800\/60 {
+  background-color: #f1f5f9 !important;
+}
+
+/* 2. Textos y Tipografías */
+.theme-light .text-white,
+.theme-light .text-zinc-100 {
+  color: #0f172a !important;
+}
+
+.theme-light [class*="text-[#DFE2F1]"],
+.theme-light [class*="text-[#dfe2f1]"],
+.theme-light .text-zinc-200 {
+  color: #1e293b !important;
+}
+
+.theme-light .text-zinc-300 {
+  color: #334155 !important;
+}
+
+.theme-light [class*="text-[#9AA6A0]"],
+.theme-light [class*="text-[#9aa6a0]"],
 .theme-light .text-zinc-400,
 .theme-light .text-zinc-500,
 .theme-light .text-gray-400,
-.theme-light .text-gray-500 { color: #64748b !important; }
-.theme-light .text-gray-600 { color: #475569 !important; }
-.theme-light input,
+.theme-light .text-gray-500 {
+  color: #64748b !important;
+}
+
+.theme-light .text-gray-600,
+.theme-light .text-zinc-600 {
+  color: #475569 !important;
+}
+
+/* 3. Bordes y Divisores */
+.theme-light [class*="border-zinc-800"],
+.theme-light [class*="border-zinc-700"],
+.theme-light .border-zinc-800,
+.theme-light .border-zinc-800\/80,
+.theme-light .border-zinc-700 {
+  border-color: #e2e8f0 !important;
+}
+
+.theme-light [class*="divide-zinc-800"] > :not([hidden]) ~ :not([hidden]),
+.theme-light .divide-zinc-800 > :not([hidden]) ~ :not([hidden]),
+.theme-light .divide-zinc-800\/80 > :not([hidden]) ~ :not([hidden]),
+.theme-light .divide-zinc-800\/60 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e2e8f0 !important;
+}
+
+/* 4. Hover States */
+.theme-light .hover\:bg-zinc-800:hover,
+.theme-light .hover\:bg-zinc-800\/50:hover,
+.theme-light .hover\:bg-zinc-800\/60:hover,
+.theme-light .hover\:bg-zinc-800\/70:hover,
+.theme-light .hover\:bg-zinc-800\/80:hover,
+.theme-light .hover\:bg-zinc-900:hover,
+.theme-light .hover\:bg-zinc-900\/60:hover,
+.theme-light [class*="hover:bg-zinc-800"]:hover {
+  background-color: #f1f5f9 !important;
+}
+
+.theme-light [class*="hover:border-zinc-700"]:hover,
+.theme-light .hover\:border-zinc-700:hover {
+  border-color: #cbd5e1 !important;
+}
+
+/* 5. Inputs, Selects y Formularios */
+.theme-light input:not([type="checkbox"]):not([type="radio"]),
 .theme-light textarea,
-.theme-light select { color: #0f172a !important; background-color: #ffffff !important; }
+.theme-light select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+.theme-light input:focus,
+.theme-light textarea:focus,
+.theme-light select:focus {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15) !important;
+}
+
 .theme-light input::placeholder,
-.theme-light textarea::placeholder { color: #94a3b8 !important; opacity: 1; }
-.theme-light option { color: #0f172a; background: #ffffff; }
+.theme-light textarea::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1;
+}
 
-.theme-light .border-zinc-800 { border-color: #e2e8f0 !important; }
-.theme-light .border-zinc-800\/80 { border-color: rgba(226,232,240,.9) !important; }
-.theme-light .border-zinc-700 { border-color: #cbd5e1 !important; }
-.theme-light .divide-zinc-800\/80 > :not([hidden]) ~ :not([hidden]) { border-color: #e2e8f0 !important; }
+.theme-light option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
 
-/* Sombras atmosféricas del diseño claro. */
+/* 6. Sombras y Cards */
 .theme-light .shadow-xl { box-shadow: 0 18px 45px rgba(15,23,42,.06) !important; }
 .theme-light .shadow-lg { box-shadow: 0 12px 32px rgba(15,23,42,.05) !important; }
+.theme-light .shadow-sm { box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important; }
+
+/* 7. Recharts Tooltip & Grid */
+.theme-light .recharts-default-tooltip {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08) !important;
+}
+
+.theme-light .recharts-tooltip-item,
+.theme-light .recharts-tooltip-item-name,
+.theme-light .recharts-tooltip-item-value {
+  color: #0f172a !important;
+}
+
+.theme-light .recharts-cartesian-grid-horizontal line,
+.theme-light .recharts-cartesian-grid-vertical line {
+  stroke: #e2e8f0 !important;
+}
+
+.theme-light .recharts-text,
+.theme-light .recharts-cartesian-axis-tick-value {
+  fill: #64748b !important;
+}
 
 /* Cards existentes conservan sus IDs y comportamiento; solo cambia la presentación. */
 .theme-light #card-income,

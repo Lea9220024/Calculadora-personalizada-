@@ -11,6 +11,9 @@ export type PendingOperation =
   | { id: string; type: 'upsert_budget'; payload: MonthlyBudget }
   | { id: string; type: 'upsert_settings'; payload: AppSettings };
 
+type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
+export type PendingOperationInput = DistributiveOmit<PendingOperation, 'id'>;
+
 const readQueue = (): PendingOperation[] => {
   try {
     const raw = localStorage.getItem(QUEUE_KEY);
@@ -26,14 +29,26 @@ const writeQueue = (queue: PendingOperation[]) => {
 
 const operationId = (type: PendingOperation['type'], key: string) => `${type}:${key}`;
 
-export function enqueuePendingSupabaseSync(operation: Omit<PendingOperation, 'id'>): string {
-  const key = operation.type === 'upsert_transaction' || operation.type === 'upsert_category'
-    ? operation.payload.id
-    : operation.type === 'upsert_budget'
-      ? operation.payload.monthKey
-      : operation.type === 'upsert_settings'
-        ? 'settings'
-        : operation.payload.id;
+export function enqueuePendingSupabaseSync(operation: PendingOperationInput): string {
+  let key = '';
+  switch (operation.type) {
+    case 'upsert_transaction':
+      key = operation.payload.id;
+      break;
+    case 'upsert_category':
+      key = operation.payload.id;
+      break;
+    case 'delete_transaction':
+    case 'delete_category':
+      key = operation.payload.id;
+      break;
+    case 'upsert_budget':
+      key = operation.payload.monthKey;
+      break;
+    case 'upsert_settings':
+      key = 'settings';
+      break;
+  }
   const id = operationId(operation.type, key);
   const queue = readQueue();
   writeQueue([...queue.filter(item => item.id !== id), { ...operation, id } as PendingOperation]);

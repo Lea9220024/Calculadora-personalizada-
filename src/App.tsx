@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Category, FinancialCard, InstallmentPlan, MonthlyBudget, NetWorthSnapshot, PatrimonyItem, Subscription, FutureCommitment, Transaction, ViewTab, AppSettings } from './types';
 import { DEFAULT_CATEGORIES, DEFAULT_SETTINGS, INITIAL_BUDGET, INITIAL_TRANSACTIONS } from './data/initialData';
-import { Header } from './components/Header';
+import { SovereignSidebar } from './components/SovereignSidebar';
+import { SovereignTopbar } from './components/SovereignTopbar';
+import { SovereignDashboard } from './components/SovereignDashboard';
 import { GlobalGradientDefs } from './components/GradientIcon';
 import { SummaryCards } from './components/SummaryCards';
 import { TransactionList } from './components/TransactionList';
@@ -33,6 +35,8 @@ const createTransactionId = () => typeof crypto !== 'undefined' && typeof crypto
 const createId = (prefix: string) => typeof crypto !== 'undefined' && typeof crypto['randomUUID'] === 'function' ? `${prefix}-${crypto['randomUUID']()}` : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 const syncInBackground = (operation: () => Promise<void>, label: string) => { void operation().catch((error) => console.warn(`No se pudo sincronizar ${label} con Supabase. La copia local se mantiene.`, error)); };
 
+type CloudStatus = 'offline' | 'connected' | 'syncing' | 'error';
+
 export default function App() {
   const [currentMonthKey, setCurrentMonthKey] = useState<string>(getCurrentMonthKey());
   const [activeTab, setActiveTab] = useState<ViewTab>('dashboard');
@@ -46,11 +50,18 @@ export default function App() {
   const [patrimonyItems, setPatrimonyItems] = useState<PatrimonyItem[]>(() => { try { const saved = localStorage.getItem(STORAGE_KEYS.PATRIMONY); if (saved) return JSON.parse(saved); } catch (e) { console.error(e); } return []; });
   const [netWorthSnapshots, setNetWorthSnapshots] = useState<NetWorthSnapshot[]>(() => { try { const saved = localStorage.getItem(STORAGE_KEYS.NET_WORTH); if (saved) return JSON.parse(saved); } catch (e) { console.error(e); } return []; });
   const [futureCommitments, setFutureCommitments] = useState<FutureCommitment[]>(() => { try { const saved = localStorage.getItem(STORAGE_KEYS.COMMITMENTS); if (saved) return JSON.parse(saved); } catch (e) { console.error(e); } return []; });
+  
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isExportImportOpen, setIsExportImportOpen] = useState(false);
   const [isSafeImportOpen, setIsSafeImportOpen] = useState(false);
   const [isSupabaseSyncOpen, setIsSupabaseSyncOpen] = useState(false);
+
+  // Sovereign UX State
+  const [hideValues, setHideValues] = useState<boolean>(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [cloudStatus, setCloudStatus] = useState<CloudStatus>('offline');
+  const [userEmail, setUserEmail] = useState<string>('Sovereign Member');
 
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions)); }, [transactions]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories)); }, [categories]);
@@ -69,8 +80,46 @@ export default function App() {
     applyTheme(); if (settings.theme !== 'system') return;
     const media = window.matchMedia('(prefers-color-scheme: light)'); const handleChange = () => applyTheme(); media.addEventListener?.('change', handleChange); return () => media.removeEventListener?.('change', handleChange);
   }, [settings.theme]);
+
   useEffect(() => { const orientation = window.screen?.orientation; try { orientation?.unlock?.(); } catch {} }, []);
 
+  // Supabase Auth and Sync Status
+  useEffect(() => {
+    if (!supabase) return;
+    let mounted = true;
+
+    const updateSessionStatus = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (mounted) {
+        setCloudStatus(session?.user ? 'connected' : 'offline');
+        if (session?.user?.email) setUserEmail(session.user.email);
+      }
+    };
+    void updateSessionStatus();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (mounted) {
+        setCloudStatus(session?.user ? 'connected' : 'offline');
+        if (session?.user?.email) setUserEmail(session.user.email);
+      }
+    });
+
+    const handleSyncStatus = (event: Event) => {
+      const detail = (event as CustomEvent<{ status?: string }>).detail;
+      if (detail?.status === 'pending') setCloudStatus('syncing');
+      if (detail?.status === 'synced') setCloudStatus('connected');
+      if (detail?.status === 'error') setCloudStatus('error');
+    };
+    window.addEventListener('supabase-sync-status', handleSyncStatus);
+
+    return () => {
+      mounted = false;
+      authListener.subscription.unsubscribe();
+      window.removeEventListener('supabase-sync-status', handleSyncStatus);
+    };
+  }, []);
+
+  // Supabase Data Load & Realtime
   useEffect(() => {
     if (!supabase) return;
     let cancelled = false; let loadingUserId: string | null = null; let realtimeChannel: ReturnType<typeof subscribeToCalculatorRealtime> = null;
@@ -83,55 +132,367 @@ export default function App() {
   }, []);
 
   const monthTransactions = transactions.filter(t => t.date.startsWith(currentMonthKey));
-  const monthIncome = monthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-  const monthExpenses = monthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
   const currentBudget = budgets.find(b => b.monthKey === currentMonthKey) || { monthKey: currentMonthKey, totalTarget: 0, categoryTargets: {} };
 
-  const handleSaveTransaction = (txData: Omit<Transaction, 'id' | 'createdAt'>) => { if (editingTransaction) { const updatedTransaction = { ...editingTransaction, ...txData }; setTransactions(prev => prev.map(t => t.id === editingTransaction.id ? updatedTransaction : t)); syncInBackground(() => syncTransactionToSupabase(updatedTransaction), 'el movimiento'); setEditingTransaction(null); } else { const planId = txData.installmentTotal && txData.installmentTotal > 1 && txData.cardId ? createId('installment') : undefined; const newTx: Transaction = { ...txData, id: createTransactionId(), installmentPlanId: planId, createdAt: new Date().toISOString() }; const defaultCategoryId = categories.find(c => c.type === newTx.type || c.type === 'both')?.id; const categorized = newTx.categoryId === defaultCategoryId ? categorizeTransaction(newTx, categories, transactions) : newTx; const finalTx = planId ? { ...categorized, installmentPlanId: planId } : categorized; setTransactions(prev => [finalTx, ...prev]); syncInBackground(() => syncTransactionToSupabase(finalTx), 'el movimiento'); if (planId && finalTx.cardId && finalTx.installmentTotal && finalTx.installmentTotalAmount) { const plan: InstallmentPlan = { id: planId, cardId: finalTx.cardId, title: finalTx.title, totalAmount: finalTx.installmentTotalAmount, installmentAmount: finalTx.amount, installments: finalTx.installmentTotal, currentInstallment: 1, startDate: finalTx.date, transactionId: finalTx.id, notes: finalTx.notes, createdAt: finalTx.createdAt }; setInstallmentPlans(prev => [plan, ...prev]); } } };
-  const handleDuplicateTransaction = (tx: Transaction) => { const duplicated: Transaction = { ...tx, id: createTransactionId(), title: `${tx.title} (Copia)`, createdAt: new Date().toISOString() }; setTransactions(prev => [duplicated, ...prev]); syncInBackground(() => syncTransactionToSupabase(duplicated), 'el movimiento duplicado'); };
-  const handleDeleteTransaction = (id: string) => { if (window.confirm('¿Seguro que deseas borrar este registro?')) { setTransactions(prev => prev.filter(t => t.id !== id)); syncInBackground(() => deleteTransactionFromSupabase(id), 'la eliminación del movimiento'); } };
-  const handleUpdateBudget = (newBudget: MonthlyBudget) => { setBudgets(prev => prev.some(b => b.monthKey === newBudget.monthKey) ? prev.map(b => b.monthKey === newBudget.monthKey ? newBudget : b) : [...prev, newBudget]); syncInBackground(() => syncBudgetToSupabase(newBudget), 'el presupuesto'); };
-  const handleAddCategory = (newCat: Omit<Category, 'id'>) => { const created: Category = { ...newCat, id: `cat-${Date.now()}` }; setCategories(prev => [...prev, created]); syncInBackground(() => syncCategoryToSupabase(created), 'la categoría'); };
-  const handleUpdateCategory = (updated: Category) => { setCategories(prev => prev.map(c => c.id === updated.id ? updated : c)); syncInBackground(() => syncCategoryToSupabase(updated), 'la categoría'); };
-  const handleDeleteCategory = (id: string) => { if (window.confirm('¿Deseas eliminar esta categoría?')) { setCategories(prev => prev.filter(c => c.id !== id)); syncInBackground(() => deleteCategoryFromSupabase(id), 'la eliminación de la categoría'); } };
-  const handleAddCard = (newCard: Omit<FinancialCard, 'id' | 'createdAt'>) => { const card: FinancialCard = { ...newCard, id: createId('card'), createdAt: new Date().toISOString() }; setCards(prev => [card, ...prev]); };
+  // Net Worth computation for topbar
+  const totalAssets = patrimonyItems.filter(i => i.type === 'asset').reduce((s, i) => s + i.value, 0);
+  const totalLiabilities = patrimonyItems.filter(i => i.type === 'liability').reduce((s, i) => s + i.value, 0);
+  const netWorthTotal = totalAssets - totalLiabilities;
+
+  const handleSaveTransaction = (txData: Omit<Transaction, 'id' | 'createdAt'>) => {
+    if (editingTransaction) {
+      const updatedTransaction = { ...editingTransaction, ...txData };
+      setTransactions(prev => prev.map(t => t.id === editingTransaction.id ? updatedTransaction : t));
+      syncInBackground(() => syncTransactionToSupabase(updatedTransaction), 'el movimiento');
+      setEditingTransaction(null);
+    } else {
+      const planId = txData.installmentTotal && txData.installmentTotal > 1 && txData.cardId ? createId('installment') : undefined;
+      const newTx: Transaction = { ...txData, id: createTransactionId(), installmentPlanId: planId, createdAt: new Date().toISOString() };
+      const defaultCategoryId = categories.find(c => c.type === newTx.type || c.type === 'both')?.id;
+      const categorized = newTx.categoryId === defaultCategoryId ? categorizeTransaction(newTx, categories, transactions) : newTx;
+      const finalTx = planId ? { ...categorized, installmentPlanId: planId } : categorized;
+      setTransactions(prev => [finalTx, ...prev]);
+      syncInBackground(() => syncTransactionToSupabase(finalTx), 'el movimiento');
+      if (planId && finalTx.cardId && finalTx.installmentTotal && finalTx.installmentTotalAmount) {
+        const plan: InstallmentPlan = { id: planId, cardId: finalTx.cardId, title: finalTx.title, totalAmount: finalTx.installmentTotalAmount, installmentAmount: finalTx.amount, installments: finalTx.installmentTotal, currentInstallment: 1, startDate: finalTx.date, transactionId: finalTx.id, notes: finalTx.notes, createdAt: finalTx.createdAt };
+        setInstallmentPlans(prev => [plan, ...prev]);
+      }
+    }
+  };
+
+  const handleDuplicateTransaction = (tx: Transaction) => {
+    const duplicated: Transaction = { ...tx, id: createTransactionId(), title: `${tx.title} (Copia)`, createdAt: new Date().toISOString() };
+    setTransactions(prev => [duplicated, ...prev]);
+    syncInBackground(() => syncTransactionToSupabase(duplicated), 'el movimiento duplicado');
+  };
+
+  const handleDeleteTransaction = (id: string) => {
+    if (window.confirm('¿Seguro que deseas borrar este registro?')) {
+      setTransactions(prev => prev.filter(t => t.id !== id));
+      syncInBackground(() => deleteTransactionFromSupabase(id), 'la eliminación del movimiento');
+    }
+  };
+
+  const handleUpdateBudget = (newBudget: MonthlyBudget) => {
+    setBudgets(prev => prev.some(b => b.monthKey === newBudget.monthKey) ? prev.map(b => b.monthKey === newBudget.monthKey ? newBudget : b) : [...prev, newBudget]);
+    syncInBackground(() => syncBudgetToSupabase(newBudget), 'el presupuesto');
+  };
+
+  const handleAddCategory = (newCat: Omit<Category, 'id'>) => {
+    const created: Category = { ...newCat, id: `cat-${Date.now()}` };
+    setCategories(prev => [...prev, created]);
+    syncInBackground(() => syncCategoryToSupabase(created), 'la categoría');
+  };
+
+  const handleUpdateCategory = (updated: Category) => {
+    setCategories(prev => prev.map(c => c.id === updated.id ? updated : c));
+    syncInBackground(() => syncCategoryToSupabase(updated), 'la categoría');
+  };
+
+  const handleDeleteCategory = (id: string) => {
+    if (window.confirm('¿Deseas eliminar esta categoría?')) {
+      setCategories(prev => prev.filter(c => c.id !== id));
+      syncInBackground(() => deleteCategoryFromSupabase(id), 'la eliminación de la categoría');
+    }
+  };
+
+  const handleAddCard = (newCard: Omit<FinancialCard, 'id' | 'createdAt'>) => {
+    const card: FinancialCard = { ...newCard, id: createId('card'), createdAt: new Date().toISOString() };
+    setCards(prev => [card, ...prev]);
+  };
   const handleUpdateCard = (updated: FinancialCard) => setCards(prev => prev.map(c => c.id === updated.id ? updated : c));
   const handleDeleteCard = (id: string) => setCards(prev => prev.filter(c => c.id !== id));
-  const handleAddSubscription = (data: Omit<Subscription, 'id' | 'createdAt' | 'updatedAt'>) => { const now = new Date().toISOString(); const subscription: Subscription = { ...data, id: createId('subscription'), createdAt: now, updatedAt: now }; setSubscriptions(prev => [subscription, ...prev]); };
+
+  const handleAddSubscription = (data: Omit<Subscription, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const subscription: Subscription = { ...data, id: createId('subscription'), createdAt: now, updatedAt: now };
+    setSubscriptions(prev => [subscription, ...prev]);
+  };
   const handleUpdateSubscription = (updated: Subscription) => setSubscriptions(prev => prev.map(s => s.id === updated.id ? updated : s));
   const handleDeleteSubscription = (id: string) => setSubscriptions(prev => prev.filter(s => s.id !== id));
-  const handleAddPatrimony = (data: Omit<PatrimonyItem, 'id' | 'createdAt' | 'updatedAt'>) => { const now = new Date().toISOString(); const item: PatrimonyItem = { ...data, id: createId('asset'), createdAt: now, updatedAt: now }; setPatrimonyItems(prev => [item, ...prev]); syncInBackground(() => syncPatrimonyItemToSupabase(item), 'el patrimonio'); };
-  const handleUpdatePatrimony = (item: PatrimonyItem) => { const updated = { ...item, updatedAt: new Date().toISOString() }; setPatrimonyItems(prev => prev.map(i => i.id === updated.id ? updated : i)); syncInBackground(() => syncPatrimonyItemToSupabase(updated), 'el patrimonio'); };
-  const handleDeletePatrimony = (id: string) => { if (window.confirm('¿Eliminar este registro patrimonial?')) { setPatrimonyItems(prev => prev.filter(i => i.id !== id)); syncInBackground(() => deletePatrimonyItemFromSupabase(id), 'la eliminación del patrimonio'); } };
-  useEffect(() => { if (!patrimonyItems.length) return; const totalAssets = patrimonyItems.filter(i => i.type === 'asset').reduce((s, i) => s + i.value, 0); const totalLiabilities = patrimonyItems.filter(i => i.type === 'liability').reduce((s, i) => s + i.value, 0); const snapshotDate = new Date().toISOString().slice(0, 10); const snapshot: NetWorthSnapshot = { id: createId('snapshot'), snapshotDate, totalAssets, totalLiabilities, netWorth: totalAssets - totalLiabilities, createdAt: new Date().toISOString() }; setNetWorthSnapshots(prev => { const existing = prev.find(s => s.snapshotDate === snapshotDate); return existing ? prev.map(s => s.snapshotDate === snapshotDate ? { ...s, totalAssets, totalLiabilities, netWorth: totalAssets - totalLiabilities } : s) : [snapshot, ...prev]; }); syncInBackground(() => syncNetWorthSnapshotToSupabase(snapshot), 'el historial patrimonial'); }, [patrimonyItems]);
-  const handleAddCommitment = (data: Omit<FutureCommitment, 'id' | 'createdAt' | 'updatedAt'>) => { const now = new Date().toISOString(); setFutureCommitments(prev => [{ ...data, id: createId('commitment'), createdAt: now, updatedAt: now }, ...prev]); };
-  const handleUpdateCommitment = (item: FutureCommitment) => setFutureCommitments(prev => prev.map(c => c.id === item.id ? { ...item, updatedAt: new Date().toISOString() } : c));
-  const handleDeleteCommitment = (id: string) => { if (window.confirm('¿Eliminar este compromiso futuro?')) setFutureCommitments(prev => prev.filter(c => c.id !== id)); };
-  const handleCurrencyChange = (sym: string) => { const nextSettings = { ...settings, currencySymbol: sym }; setSettings(nextSettings); syncInBackground(() => syncSettingsToSupabase(nextSettings), 'la configuración'); };
-  const handleThemeChange = (theme: AppSettings['theme']) => { const nextSettings = { ...settings, theme }; setSettings(nextSettings); syncInBackground(() => syncSettingsToSupabase(nextSettings), 'el tema visual'); };
-  const handleImportFullData = (imported: { transactions: Transaction[]; categories: Category[]; budgets: MonthlyBudget[]; settings: AppSettings }) => { setTransactions(imported.transactions); setCategories(imported.categories); setBudgets(imported.budgets); setSettings({ ...DEFAULT_SETTINGS, ...imported.settings }); };
-  const handleSafeImportTransactions = (imported: Transaction[]) => { setTransactions(prev => [...imported, ...prev]); imported.forEach(tx => syncInBackground(() => syncTransactionToSupabase(tx), 'el movimiento importado')); };
-  const handleResetSampleData = () => { setTransactions(INITIAL_TRANSACTIONS); setCategories(DEFAULT_CATEGORIES); setBudgets(INITIAL_BUDGET.monthKey ? [INITIAL_BUDGET] : []); setSettings(DEFAULT_SETTINGS); };
 
-  return <div className="min-h-screen bg-black text-zinc-100 font-sans flex flex-col selection:bg-orange-500 selection:text-black">
-    <GlobalGradientDefs />
-    <Header currentMonthKey={currentMonthKey} onMonthChange={setCurrentMonthKey} activeTab={activeTab} onTabChange={setActiveTab} onOpenNewTransaction={() => { setEditingTransaction(null); setIsFormModalOpen(true); }} onOpenExportImport={() => setIsExportImportOpen(true)} onOpenSupabaseSync={() => setIsSupabaseSyncOpen(true)} currencySymbol={settings.currencySymbol} onCurrencyChange={handleCurrencyChange} theme={settings.theme} onThemeChange={handleThemeChange} />
-    <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {(activeTab === 'dashboard' || activeTab === 'transactions') && <SummaryCards totalIncome={monthIncome} totalExpenses={monthExpenses} budgetTarget={currentBudget.totalTarget} currencySymbol={settings.currencySymbol} onEditBudgetClick={() => setActiveTab('budgets')} />}
-      {activeTab === 'dashboard' && <div className="space-y-6"><div className="grid grid-cols-1 lg:grid-cols-12 gap-6"><div className="lg:col-span-7 space-y-6"><TransactionList transactions={monthTransactions} categories={categories} currencySymbol={settings.currencySymbol} onEdit={tx => { setEditingTransaction(tx); setIsFormModalOpen(true); }} onDuplicate={handleDuplicateTransaction} onDelete={handleDeleteTransaction} onAddNew={() => { setEditingTransaction(null); setIsFormModalOpen(true); }} /></div><div className="lg:col-span-5 space-y-6"><BudgetOverview currentMonthKey={currentMonthKey} monthlyBudget={currentBudget} transactions={monthTransactions} categories={categories} currencySymbol={settings.currencySymbol} onUpdateBudget={handleUpdateBudget} /></div></div><SmartAlerts currentMonthKey={currentMonthKey} transactions={transactions} categories={categories} budgetTarget={currentBudget.totalTarget} commitments={futureCommitments} installmentPlans={installmentPlans} subscriptions={subscriptions} cards={cards} currencySymbol={settings.currencySymbol} /><FinancialIntelligence currentMonthKey={currentMonthKey} budgetTarget={currentBudget.totalTarget} transactions={monthTransactions} currencySymbol={settings.currencySymbol} /><FinancialGoals transactions={transactions} currencySymbol={settings.currencySymbol} /><AnalyticsCharts transactions={monthTransactions} categories={categories} currencySymbol={settings.currencySymbol} /><HistoricalAnalysis transactions={transactions} currencySymbol={settings.currencySymbol} /></div>}
-      {activeTab === 'transactions' && <TransactionList transactions={monthTransactions} categories={categories} currencySymbol={settings.currencySymbol} onEdit={tx => { setEditingTransaction(tx); setIsFormModalOpen(true); }} onDuplicate={handleDuplicateTransaction} onDelete={handleDeleteTransaction} onAddNew={() => { setEditingTransaction(null); setIsFormModalOpen(true); }} />}
-      {activeTab === 'budgets' && <><FinancialIntelligence currentMonthKey={currentMonthKey} budgetTarget={currentBudget.totalTarget} transactions={monthTransactions} currencySymbol={settings.currencySymbol} /><div className="mt-6"><BudgetOverview currentMonthKey={currentMonthKey} monthlyBudget={currentBudget} transactions={monthTransactions} categories={categories} currencySymbol={settings.currencySymbol} onUpdateBudget={handleUpdateBudget} /></div></>}
-      {activeTab === 'analytics' && <><AnalyticsCharts transactions={monthTransactions} categories={categories} currencySymbol={settings.currencySymbol} /><HistoricalAnalysis transactions={transactions} currencySymbol={settings.currencySymbol} /><div className="mt-6"><FinancialGoals transactions={transactions} currencySymbol={settings.currencySymbol} /></div></>}
-      {activeTab === 'money-ai' && <MoneyAI currentMonthKey={currentMonthKey} transactions={transactions} categories={categories} budget={currentBudget} commitments={futureCommitments} installmentPlans={installmentPlans} subscriptions={subscriptions} patrimonyItems={patrimonyItems} cards={cards} currencySymbol={settings.currencySymbol} />}
-      {activeTab === 'patrimony' && <Patrimony items={patrimonyItems} snapshots={netWorthSnapshots} currencySymbol={settings.currencySymbol} onAdd={handleAddPatrimony} onUpdate={handleUpdatePatrimony} onDelete={handleDeletePatrimony} />}
-      {activeTab === 'commitments' && <FutureCommitments commitments={futureCommitments} installmentPlans={installmentPlans} subscriptions={subscriptions} transactions={transactions} categories={categories} cards={cards} currencySymbol={settings.currencySymbol} onAdd={handleAddCommitment} onUpdate={handleUpdateCommitment} onDelete={handleDeleteCommitment} />}
-      {activeTab === 'cards' && <CardsAndInstallments cards={cards} installmentPlans={installmentPlans} transactions={transactions} currentMonthKey={currentMonthKey} currencySymbol={settings.currencySymbol} onAddCard={handleAddCard} onUpdateCard={handleUpdateCard} onDeleteCard={handleDeleteCard} />}
-      {activeTab === 'subscriptions' && <Subscriptions subscriptions={subscriptions} categories={categories} cards={cards} transactions={transactions} currentMonthKey={currentMonthKey} currencySymbol={settings.currencySymbol} onAdd={handleAddSubscription} onUpdate={handleUpdateSubscription} onDelete={handleDeleteSubscription} />}
-      {activeTab === 'categories' && <CategoryManager categories={categories} onAddCategory={handleAddCategory} onUpdateCategory={handleUpdateCategory} onDeleteCategory={handleDeleteCategory} />}
-    </main>
-    <TransactionFormModal isOpen={isFormModalOpen} onClose={() => { setIsFormModalOpen(false); setEditingTransaction(null); }} onSave={handleSaveTransaction} editingTransaction={editingTransaction} categories={categories} cards={cards} currentMonthKey={currentMonthKey} currencySymbol={settings.currencySymbol} />
-    <ExportImportModal isOpen={isExportImportOpen} onClose={() => setIsExportImportOpen(false)} transactions={transactions} categories={categories} budgets={budgets} settings={settings} onImportFullData={handleImportFullData} onResetSampleData={handleResetSampleData} onOpenSafeImport={() => { setIsExportImportOpen(false); setIsSafeImportOpen(true); }} />
-    <SafeImportModal isOpen={isSafeImportOpen} onClose={() => setIsSafeImportOpen(false)} transactions={transactions} categories={categories} onImportTransactions={handleSafeImportTransactions} />
-    <SupabaseSyncModal isOpen={isSupabaseSyncOpen} onClose={() => setIsSupabaseSyncOpen(false)} transactions={transactions} categories={categories} budgets={budgets} settings={settings} />
-  </div>;
+  const handleAddPatrimony = (data: Omit<PatrimonyItem, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const item: PatrimonyItem = { ...data, id: createId('asset'), createdAt: now, updatedAt: now };
+    setPatrimonyItems(prev => [item, ...prev]);
+    syncInBackground(() => syncPatrimonyItemToSupabase(item), 'el patrimonio');
+  };
+  const handleUpdatePatrimony = (item: PatrimonyItem) => {
+    const updated = { ...item, updatedAt: new Date().toISOString() };
+    setPatrimonyItems(prev => prev.map(i => i.id === updated.id ? updated : i));
+    syncInBackground(() => syncPatrimonyItemToSupabase(updated), 'el patrimonio');
+  };
+  const handleDeletePatrimony = (id: string) => {
+    if (window.confirm('¿Eliminar este registro patrimonial?')) {
+      setPatrimonyItems(prev => prev.filter(i => i.id !== id));
+      syncInBackground(() => deletePatrimonyItemFromSupabase(id), 'la eliminación del patrimonio');
+    }
+  };
+
+  useEffect(() => {
+    if (!patrimonyItems.length) return;
+    const currentAssets = patrimonyItems.filter(i => i.type === 'asset').reduce((s, i) => s + i.value, 0);
+    const currentLiabs = patrimonyItems.filter(i => i.type === 'liability').reduce((s, i) => s + i.value, 0);
+    const snapshotDate = new Date().toISOString().slice(0, 10);
+    const snapshot: NetWorthSnapshot = { id: createId('snapshot'), snapshotDate, totalAssets: currentAssets, totalLiabilities: currentLiabs, netWorth: currentAssets - currentLiabs, createdAt: new Date().toISOString() };
+    setNetWorthSnapshots(prev => {
+      const existing = prev.find(s => s.snapshotDate === snapshotDate);
+      return existing ? prev.map(s => s.snapshotDate === snapshotDate ? { ...s, totalAssets: currentAssets, totalLiabilities: currentLiabs, netWorth: currentAssets - currentLiabs } : s) : [snapshot, ...prev];
+    });
+    syncInBackground(() => syncNetWorthSnapshotToSupabase(snapshot), 'el historial patrimonial');
+  }, [patrimonyItems]);
+
+  const handleAddCommitment = (data: Omit<FutureCommitment, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    setFutureCommitments(prev => [{ ...data, id: createId('commitment'), createdAt: now, updatedAt: now }, ...prev]);
+  };
+  const handleUpdateCommitment = (item: FutureCommitment) => setFutureCommitments(prev => prev.map(c => c.id === item.id ? { ...item, updatedAt: new Date().toISOString() } : c));
+  const handleDeleteCommitment = (id: string) => {
+    if (window.confirm('¿Eliminar este compromiso futuro?')) setFutureCommitments(prev => prev.filter(c => c.id !== id));
+  };
+
+  const handleThemeChange = (theme: AppSettings['theme']) => {
+    const nextSettings = { ...settings, theme };
+    setSettings(nextSettings);
+    syncInBackground(() => syncSettingsToSupabase(nextSettings), 'el tema visual');
+  };
+
+  const handleImportFullData = (imported: { transactions: Transaction[]; categories: Category[]; budgets: MonthlyBudget[]; settings: AppSettings }) => {
+    setTransactions(imported.transactions);
+    setCategories(imported.categories);
+    setBudgets(imported.budgets);
+    setSettings({ ...DEFAULT_SETTINGS, ...imported.settings });
+  };
+  const handleSafeImportTransactions = (imported: Transaction[]) => {
+    setTransactions(prev => [...imported, ...prev]);
+    imported.forEach(tx => syncInBackground(() => syncTransactionToSupabase(tx), 'el movimiento importado'));
+  };
+  const handleResetSampleData = () => {
+    setTransactions(INITIAL_TRANSACTIONS);
+    setCategories(DEFAULT_CATEGORIES);
+    setBudgets(INITIAL_BUDGET.monthKey ? [INITIAL_BUDGET] : []);
+    setSettings(DEFAULT_SETTINGS);
+  };
+
+  return (
+    <div className="min-h-screen bg-[var(--cream-bg)] text-[var(--cream-text)] font-sans flex flex-row selection:bg-emerald-500 selection:text-zinc-950 transition-colors duration-150">
+      <GlobalGradientDefs />
+
+      {/* Sovereign Left Sidebar */}
+      <SovereignSidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        cloudStatus={cloudStatus}
+        onOpenSupabaseSync={() => setIsSupabaseSyncOpen(true)}
+        userEmail={userEmail}
+        isMobileOpen={isMobileMenuOpen}
+        onCloseMobile={() => setIsMobileMenuOpen(false)}
+      />
+
+      {/* Main App Content Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <SovereignTopbar
+          currentMonthKey={currentMonthKey}
+          onMonthChange={setCurrentMonthKey}
+          onOpenNewTransaction={() => { setEditingTransaction(null); setIsFormModalOpen(true); }}
+          onOpenExportImport={() => setIsExportImportOpen(true)}
+          onOpenSupabaseSync={() => setIsSupabaseSyncOpen(true)}
+          currencySymbol={settings.currencySymbol}
+          theme={settings.theme}
+          onThemeChange={handleThemeChange}
+          netWorthTotal={netWorthTotal}
+          hideValues={hideValues}
+          onToggleHideValues={() => setHideValues(prev => !prev)}
+          onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+        />
+
+        <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-6">
+          {activeTab === 'dashboard' && (
+            <SovereignDashboard
+              currentMonthKey={currentMonthKey}
+              transactions={transactions}
+              categories={categories}
+              budget={currentBudget}
+              cards={cards}
+              commitments={futureCommitments}
+              subscriptions={subscriptions}
+              installmentPlans={installmentPlans}
+              patrimonyItems={patrimonyItems}
+              snapshots={netWorthSnapshots}
+              currencySymbol={settings.currencySymbol}
+              hideValues={hideValues}
+              onNavigateTab={setActiveTab}
+              onOpenNewTransaction={() => { setEditingTransaction(null); setIsFormModalOpen(true); }}
+            />
+          )}
+
+          {activeTab === 'transactions' && (
+            <div className="space-y-6">
+              <TransactionList
+                transactions={monthTransactions}
+                categories={categories}
+                currencySymbol={settings.currencySymbol}
+                onEdit={tx => { setEditingTransaction(tx); setIsFormModalOpen(true); }}
+                onDuplicate={handleDuplicateTransaction}
+                onDelete={handleDeleteTransaction}
+                onAddNew={() => { setEditingTransaction(null); setIsFormModalOpen(true); }}
+              />
+            </div>
+          )}
+
+          {activeTab === 'budgets' && (
+            <div className="space-y-6">
+              <FinancialIntelligence
+                currentMonthKey={currentMonthKey}
+                budgetTarget={currentBudget.totalTarget}
+                transactions={monthTransactions}
+                currencySymbol={settings.currencySymbol}
+              />
+              <BudgetOverview
+                currentMonthKey={currentMonthKey}
+                monthlyBudget={currentBudget}
+                transactions={monthTransactions}
+                categories={categories}
+                currencySymbol={settings.currencySymbol}
+                onUpdateBudget={handleUpdateBudget}
+              />
+            </div>
+          )}
+
+          {activeTab === 'analytics' && (
+            <div className="space-y-6">
+              <AnalyticsCharts
+                transactions={monthTransactions}
+                categories={categories}
+                currencySymbol={settings.currencySymbol}
+              />
+              <HistoricalAnalysis
+                transactions={transactions}
+                currencySymbol={settings.currencySymbol}
+              />
+              <FinancialGoals
+                transactions={transactions}
+                currencySymbol={settings.currencySymbol}
+              />
+            </div>
+          )}
+
+          {activeTab === 'money-ai' && (
+            <MoneyAI
+              currentMonthKey={currentMonthKey}
+              transactions={transactions}
+              categories={categories}
+              budget={currentBudget}
+              commitments={futureCommitments}
+              installmentPlans={installmentPlans}
+              subscriptions={subscriptions}
+              patrimonyItems={patrimonyItems}
+              cards={cards}
+              currencySymbol={settings.currencySymbol}
+            />
+          )}
+
+          {activeTab === 'patrimony' && (
+            <Patrimony
+              items={patrimonyItems}
+              snapshots={netWorthSnapshots}
+              currencySymbol={settings.currencySymbol}
+              onAdd={handleAddPatrimony}
+              onUpdate={handleUpdatePatrimony}
+              onDelete={handleDeletePatrimony}
+            />
+          )}
+
+          {activeTab === 'commitments' && (
+            <FutureCommitments
+              commitments={futureCommitments}
+              installmentPlans={installmentPlans}
+              subscriptions={subscriptions}
+              transactions={transactions}
+              categories={categories}
+              cards={cards}
+              currencySymbol={settings.currencySymbol}
+              onAdd={handleAddCommitment}
+              onUpdate={handleUpdateCommitment}
+              onDelete={handleDeleteCommitment}
+            />
+          )}
+
+          {activeTab === 'cards' && (
+            <CardsAndInstallments
+              cards={cards}
+              installmentPlans={installmentPlans}
+              transactions={transactions}
+              currentMonthKey={currentMonthKey}
+              currencySymbol={settings.currencySymbol}
+              onAddCard={handleAddCard}
+              onUpdateCard={handleUpdateCard}
+              onDeleteCard={handleDeleteCard}
+            />
+          )}
+
+          {activeTab === 'subscriptions' && (
+            <Subscriptions
+              subscriptions={subscriptions}
+              categories={categories}
+              cards={cards}
+              transactions={transactions}
+              currentMonthKey={currentMonthKey}
+              currencySymbol={settings.currencySymbol}
+              onAdd={handleAddSubscription}
+              onUpdate={handleUpdateSubscription}
+              onDelete={handleDeleteSubscription}
+            />
+          )}
+
+          {activeTab === 'categories' && (
+            <CategoryManager
+              categories={categories}
+              onAddCategory={handleAddCategory}
+              onUpdateCategory={handleUpdateCategory}
+              onDeleteCategory={handleDeleteCategory}
+            />
+          )}
+        </main>
+      </div>
+
+      {/* Modals - Intact functionality */}
+      <TransactionFormModal
+        isOpen={isFormModalOpen}
+        onClose={() => { setIsFormModalOpen(false); setEditingTransaction(null); }}
+        onSave={handleSaveTransaction}
+        editingTransaction={editingTransaction}
+        categories={categories}
+        cards={cards}
+        currentMonthKey={currentMonthKey}
+        currencySymbol={settings.currencySymbol}
+      />
+      <ExportImportModal
+        isOpen={isExportImportOpen}
+        onClose={() => setIsExportImportOpen(false)}
+        transactions={transactions}
+        categories={categories}
+        budgets={budgets}
+        settings={settings}
+        onImportFullData={handleImportFullData}
+        onResetSampleData={handleResetSampleData}
+        onOpenSafeImport={() => { setIsExportImportOpen(false); setIsSafeImportOpen(true); }}
+      />
+      <SafeImportModal
+        isOpen={isSafeImportOpen}
+        onClose={() => setIsSafeImportOpen(false)}
+        transactions={transactions}
+        categories={categories}
+        onImportTransactions={handleSafeImportTransactions}
+      />
+      <SupabaseSyncModal
+        isOpen={isSupabaseSyncOpen}
+        onClose={() => setIsSupabaseSyncOpen(false)}
+        transactions={transactions}
+        categories={categories}
+        budgets={budgets}
+        settings={settings}
+      />
+    </div>
+  );
 }

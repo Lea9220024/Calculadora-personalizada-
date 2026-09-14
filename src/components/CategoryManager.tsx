@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Plus, Edit2, Trash2, Tag, Check, X } from 'lucide-react';
 import { Category, TransactionType } from '../types';
 import { CategoryIcon } from './CategoryIcon';
-import { GradientIcon } from './GradientIcon';
 
 interface CategoryManagerProps {
   categories: Category[];
@@ -12,9 +11,9 @@ interface CategoryManagerProps {
 }
 
 const AVAILABLE_COLORS = [
-  'bg-orange-600', 'bg-amber-500', 'bg-orange-500', 'bg-yellow-500',
-  'bg-rose-500', 'bg-red-500', 'bg-amber-600', 'bg-rose-600',
-  'bg-yellow-600', 'bg-zinc-600'
+  'bg-emerald-600', 'bg-emerald-500', 'bg-teal-500', 'bg-cyan-600',
+  'bg-blue-600', 'bg-indigo-500', 'bg-violet-500', 'bg-amber-500',
+  'bg-rose-500', 'bg-zinc-600'
 ];
 
 const AVAILABLE_ICONS = [
@@ -34,7 +33,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
 
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('Tag');
-  const [color, setColor] = useState('bg-orange-500');
+  const [color, setColor] = useState('bg-emerald-500');
   const [type, setType] = useState<TransactionType>('expense');
 
   const handleSave = (e: React.FormEvent) => {
@@ -64,10 +63,9 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
       setIsAdding(false);
     }
 
-    // Reset
     setName('');
     setIcon('Tag');
-    setColor('bg-orange-500');
+    setColor('bg-emerald-500');
     setType('expense');
   };
 
@@ -81,16 +79,15 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   };
 
   return (
-    <div className="bg-zinc-900/90 p-6 rounded-2xl border border-zinc-800 shadow-md space-y-6 text-zinc-100">
-      
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-4">
+    <div className="bg-[#171B26] p-6 rounded-2xl border border-zinc-800 shadow-sm space-y-6 text-zinc-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800/80 pb-4">
         <div>
-          <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
-            <GradientIcon icon={Tag} className="w-5 h-5" strokeWidth={2.4} />
-            <span>Gestión de Categorías Personalizadas</span>
+          <h2 className="text-xl font-extrabold text-white font-['Plus_Jakarta_Sans'] flex items-center gap-2">
+            <Tag className="w-5 h-5 text-emerald-400" />
+            <span>Gestión & Taxonomía de Categorías</span>
           </h2>
-          <p className="text-xs text-zinc-400">
-            Personaliza las etiquetas para organizar tus gastos e ingresos en pesos argentinos.
+          <p className="text-xs text-[#9AA6A0] mt-0.5">
+            Configuración de etiquetas y rubros para la imputación forense de ingresos y egresos.
           </p>
         </div>
 
@@ -100,22 +97,21 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
               setIsAdding(true);
               setName('');
               setIcon('Tag');
-              setColor('bg-orange-500');
+              setColor('bg-emerald-500');
             }}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-orange-500 hover:bg-orange-400 text-black font-extrabold text-xs rounded-xl shadow-md transition-all self-start sm:self-auto"
+            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs rounded-xl shadow-sm transition-all self-start sm:self-auto"
             id="add-category-btn"
           >
-            <Plus className="w-4 h-4 text-black" strokeWidth={2.8} />
+            <Plus className="w-4 h-4 text-zinc-950" strokeWidth={2.8} />
             <span>Nueva Categoría</span>
           </button>
         )}
       </div>
 
-      {/* Add / Edit Form Drawer */}
       {(isAdding || editingId) && (
-        <form onSubmit={handleSave} className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-4">
+        <form onSubmit={handleSave} className="bg-[#1C1F2A] p-5 rounded-xl border border-zinc-800 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-extrabold text-sm text-zinc-100">
+            <h3 className="font-extrabold text-sm text-white font-['Plus_Jakarta_Sans']">
               {editingId ? 'Editar Categoría' : 'Agregar Nueva Categoría'}
             </h3>
             <button
@@ -124,7 +120,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                 setIsAdding(false);
                 setEditingId(null);
               }}
-              className="text-zinc-500 hover:text-zinc-300"
+              className="text-[#9AA6A0] hover:text-white"
             >
               <X className="w-4 h-4" />
             </button>
@@ -132,34 +128,33 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">Nombre</label>
+              <label className="block text-[10px] font-bold text-[#9AA6A0] uppercase mb-1">Nombre</label>
               <input
                 type="text"
                 required
-                placeholder="Ej. Gimnasio, Mascotas..."
+                placeholder="Ej. Vivienda, Inversiones..."
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-semibold text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full px-3 py-2 bg-[#171B26] border border-zinc-800 rounded-lg text-xs font-medium text-white focus:outline-none focus:border-emerald-500"
                 id="cat-name-input"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">Aplica para</label>
+              <label className="block text-[10px] font-bold text-[#9AA6A0] uppercase mb-1">Aplica para</label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as TransactionType)}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-semibold text-zinc-100 cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full px-3 py-2 bg-[#171B26] border border-zinc-800 rounded-lg text-xs font-medium text-white cursor-pointer focus:outline-none focus:border-emerald-500"
               >
-                <option value="expense" className="bg-zinc-900">🟠 Gastos</option>
-                <option value="income" className="bg-zinc-900">🟡 Ingresos</option>
+                <option value="expense" className="bg-[#171B26]">Egresos</option>
+                <option value="income" className="bg-[#171B26]">Ingresos</option>
               </select>
             </div>
           </div>
 
-          {/* Color options */}
           <div>
-            <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">Color</label>
+            <label className="block text-[10px] font-bold text-[#9AA6A0] uppercase mb-1">Color de Distinción</label>
             <div className="flex flex-wrap gap-2">
               {AVAILABLE_COLORS.map((c) => (
                 <button
@@ -167,7 +162,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                   type="button"
                   onClick={() => setColor(c)}
                   className={`w-7 h-7 rounded-lg ${c} flex items-center justify-center transition-transform ${
-                    color === c ? 'ring-2 ring-orange-500 ring-offset-2 ring-offset-zinc-950 scale-110' : 'opacity-80 hover:opacity-100'
+                    color === c ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-[#1C1F2A] scale-110' : 'opacity-80 hover:opacity-100'
                   }`}
                 >
                   {color === c && <Check className="w-4 h-4 text-white" />}
@@ -176,17 +171,16 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
             </div>
           </div>
 
-          {/* Icon picker */}
           <div>
-            <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">Ícono</label>
+            <label className="block text-[10px] font-bold text-[#9AA6A0] uppercase mb-1">Iconografía</label>
             <div className="flex flex-wrap gap-2">
               {AVAILABLE_ICONS.map((ic) => (
                 <button
                   key={ic}
                   type="button"
                   onClick={() => setIcon(ic)}
-                  className={`p-2 rounded-lg border text-zinc-300 hover:bg-zinc-800 transition-all ${
-                    icon === ic ? 'border-orange-500 bg-orange-500/10 text-orange-400 font-bold' : 'border-zinc-800 bg-zinc-900'
+                  className={`p-2 rounded-lg border text-zinc-300 hover:bg-[#171B26] transition-all ${
+                    icon === ic ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-bold' : 'border-zinc-800 bg-[#171B26]'
                   }`}
                 >
                   <CategoryIcon name={ic} className="w-4 h-4" />
@@ -202,13 +196,13 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                 setIsAdding(false);
                 setEditingId(null);
               }}
-              className="px-3 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800 rounded-lg"
+              className="px-3 py-1.5 text-xs text-[#9AA6A0] hover:bg-[#171B26] rounded-lg"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 bg-orange-500 text-black font-extrabold text-xs rounded-lg shadow-sm hover:bg-orange-400"
+              className="px-4 py-1.5 bg-emerald-500 text-zinc-950 font-bold text-xs rounded-lg shadow-sm hover:bg-emerald-400"
             >
               Guardar Categoría
             </button>
@@ -221,16 +215,16 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
         {categories.map((c) => (
           <div
             key={c.id}
-            className="p-3.5 bg-zinc-950/60 rounded-xl border border-zinc-800 flex items-center justify-between group hover:bg-zinc-800/60 transition-colors"
+            className="p-3.5 bg-[#1C1F2A] rounded-xl border border-zinc-800 flex items-center justify-between group hover:border-zinc-700 transition-colors"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 text-white flex items-center justify-center shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-lg bg-[#171B26] border border-zinc-800 text-emerald-400 flex items-center justify-center shrink-0">
                 <CategoryIcon name={c.icon} className="w-4 h-4" strokeWidth={2.4} />
               </div>
-              <div>
-                <h4 className="font-extrabold text-zinc-100 text-xs">{c.name}</h4>
-                <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-                  {c.type === 'expense' ? '🟠 Gasto' : c.type === 'income' ? '🟡 Ingreso' : 'Ambos'}
+              <div className="min-w-0">
+                <h4 className="font-bold text-white text-xs truncate">{c.name}</h4>
+                <span className="text-[10px] font-mono text-[#9AA6A0] uppercase tracking-wider block">
+                  {c.type === 'expense' ? 'Egreso' : c.type === 'income' ? 'Ingreso' : 'Dual'}
                 </span>
               </div>
             </div>
@@ -238,23 +232,22 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
             <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={() => startEdit(c)}
-                className="p-1 text-zinc-400 hover:text-white rounded hover:bg-zinc-800"
+                className="p-1.5 text-[#9AA6A0] hover:text-white rounded-lg hover:bg-[#171B26]"
                 title="Editar"
               >
-                <GradientIcon icon={Edit2} className="w-3.5 h-3.5" strokeWidth={2.2} />
+                <Edit2 className="w-3.5 h-3.5" strokeWidth={2.2} />
               </button>
               <button
                 onClick={() => onDeleteCategory(c.id)}
-                className="p-1 text-zinc-400 hover:text-rose-400 rounded hover:bg-rose-500/10"
+                className="p-1.5 text-[#9AA6A0] hover:text-rose-400 rounded-lg hover:bg-rose-500/10"
                 title="Eliminar"
               >
-                <GradientIcon icon={Trash2} className="w-3.5 h-3.5" strokeWidth={2.2} />
+                <Trash2 className="w-3.5 h-3.5" strokeWidth={2.2} />
               </button>
             </div>
           </div>
         ))}
       </div>
-
     </div>
   );
 };

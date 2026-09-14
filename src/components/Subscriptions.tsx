@@ -48,11 +48,190 @@ export const Subscriptions: React.FC<Props> = ({ subscriptions, categories, card
   const createFromSuggestion = (t: Props['transactions'][number]) => { const next = new Date(); const date = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(Math.min(28, next.getDate())).padStart(2, '0')}`; onAdd({ name: t.title, amount: t.amount, frequency: 'monthly', nextChargeDate: date, categoryId: t.categoryId, paymentMethod: t.paymentMethod, cardId: t.cardId, active: true, notes: 'Detectada desde un movimiento marcado como recurrente.' }); };
 
   return <section className="space-y-6">
-    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.18em] text-orange-400">5.28</p><h2 className="text-2xl font-black text-zinc-100 mt-1">Suscripciones</h2><p className="text-sm text-zinc-400 mt-1">Controlá servicios recurrentes, próximas renovaciones y cuánto pesan realmente en tu presupuesto.</p></div><button onClick={openNew} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-black font-black text-sm"><Plus className="w-4 h-4" /> Nueva suscripción</button></div>
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3"><div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4"><p className="text-[10px] uppercase font-bold text-zinc-500">Activas</p><p className="text-2xl font-black text-zinc-100 mt-1">{active.length}</p></div><div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4"><p className="text-[10px] uppercase font-bold text-zinc-500">Costo mensual equivalente</p><p className="text-xl font-black text-orange-400 mt-1">{money(monthlyCost, currencySymbol)}</p></div><div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4"><p className="text-[10px] uppercase font-bold text-zinc-500">Costo anual</p><p className="text-xl font-black text-emerald-400 mt-1">{money(annualCost, currencySymbol)}</p></div></div>
-    {upcoming.length > 0 && <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5"><div className="flex items-center gap-2 mb-4"><BellRing className="w-5 h-5 text-orange-400" /><div><h3 className="font-black text-zinc-100">Próximas renovaciones</h3><p className="text-xs text-zinc-500">Las 5 próximas fechas registradas.</p></div></div><div className="space-y-2">{upcoming.map(s => { const d = daysUntil(s.nextChargeDate); const urgent = d >= 0 && d <= 7; return <div key={s.id} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3"><div className="min-w-0"><p className="font-bold text-sm text-zinc-100 truncate">{s.name}</p><p className="text-[11px] text-zinc-500">{formatDate(s.nextChargeDate)} · {d < 0 ? 'Vencida' : d === 0 ? 'Hoy' : `en ${d} días`}</p></div><span className={`text-sm font-black whitespace-nowrap ${urgent ? 'text-orange-400' : 'text-zinc-200'}`}>{money(s.amount, currencySymbol)}</span></div>; })}</div></div>}
-    {suggestions.length > 0 && <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5"><div className="flex items-center gap-2 mb-3"><RefreshCw className="w-4 h-4 text-emerald-400" /><div><h3 className="font-black text-zinc-100">Recurrentes detectados</h3><p className="text-xs text-zinc-500">Encontré movimientos marcados como recurrentes que todavía no están registrados como suscripciones.</p></div></div><div className="flex flex-wrap gap-2">{suggestions.map((t, i) => <button key={`${t.title}-${i}`} onClick={() => createFromSuggestion(t)} className="rounded-xl border border-zinc-800 bg-zinc-950/70 px-3 py-2 text-left hover:border-emerald-500/40"><p className="text-xs font-bold text-zinc-200">{t.title}</p><p className="text-[10px] text-emerald-400">{money(t.amount, currencySymbol)} · + agregar</p></button>)}</div></div>}
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 overflow-hidden"><div className="px-5 py-4 border-b border-zinc-800"><h3 className="font-black text-zinc-100">Mis suscripciones</h3></div>{subscriptions.length === 0 ? <div className="p-8 text-center"><CalendarClock className="w-9 h-9 mx-auto text-orange-400 mb-3" /><p className="font-bold text-zinc-200">Todavía no registraste suscripciones.</p><p className="text-xs text-zinc-500 mt-1">Netflix, Spotify, gimnasio, software, seguros y cualquier gasto periódico pueden quedar acá.</p></div> : <div className="divide-y divide-zinc-800">{subscriptions.map(s => { const card = cards.find(c => c.id === s.cardId); const cat = categories.find(c => c.id === s.categoryId); return <div key={s.id} className={`p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${!s.active ? 'opacity-50' : ''}`}><div className="min-w-0"><div className="flex items-center gap-2"><span className={`w-2 h-2 rounded-full ${s.active ? 'bg-emerald-400' : 'bg-zinc-600'}`} /><p className="font-bold text-zinc-100 truncate">{s.name}</p></div><p className="text-[11px] text-zinc-500 mt-1">{s.frequency === 'monthly' ? 'Mensual' : 'Anual'} · próxima: {formatDate(s.nextChargeDate)}{cat ? ` · ${cat.name}` : ''}{card ? ` · ${card.name}` : ''}</p>{s.notes && <p className="text-[11px] text-zinc-600 mt-1 truncate">{s.notes}</p>}</div><div className="flex items-center gap-3"><div className="text-right"><p className="font-black text-orange-400">{money(s.amount, currencySymbol)}</p><p className="text-[10px] text-zinc-500">{PAYMENT_METHOD_LABELS[s.paymentMethod]}</p></div><button onClick={() => openEdit(s)} className="p-2 rounded-lg text-zinc-400 hover:text-orange-400 hover:bg-zinc-800" title="Editar"><Pencil className="w-4 h-4" /></button><button onClick={() => { if (window.confirm(`¿Eliminar la suscripción ${s.name}?`)) onDelete(s.id); }} className="p-2 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-zinc-800" title="Eliminar"><Trash2 className="w-4 h-4" /></button></div></div>; })}</div>}</div>
-    {openForm && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setOpenForm(false)}><form onSubmit={submit} onClick={e => e.stopPropagation()} className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900 shadow-2xl overflow-hidden"><div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800"><div><h3 className="font-black text-zinc-100">{editing ? 'Editar suscripción' : 'Nueva suscripción'}</h3><p className="text-xs text-zinc-500">No genera movimientos automáticamente.</p></div><button type="button" onClick={() => setOpenForm(false)} className="p-2 text-zinc-400 hover:text-white"><X className="w-4 h-4" /></button></div><div className="p-5 space-y-4"><div><label className="text-xs font-bold text-zinc-300">Nombre</label><input required value={name} onChange={e => setName(e.target.value)} placeholder="Ej. Netflix" className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100" /></div><div className="grid grid-cols-2 gap-3"><div><label className="text-xs font-bold text-zinc-300">Importe</label><input required type="number" min="0.01" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100" /></div><div><label className="text-xs font-bold text-zinc-300">Frecuencia</label><select value={frequency} onChange={e => setFrequency(e.target.value as SubscriptionFrequency)} className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100"><option value="monthly">Mensual</option><option value="yearly">Anual</option></select></div></div><div><label className="text-xs font-bold text-zinc-300">Próximo cobro</label><input required type="date" value={nextChargeDate} onChange={e => setNextChargeDate(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100" /></div><div className="grid grid-cols-2 gap-3"><div><label className="text-xs font-bold text-zinc-300">Categoría</label><select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100"><option value="">Sin categoría</option>{categories.filter(c => c.type === 'expense' || c.type === 'both').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div><div><label className="text-xs font-bold text-zinc-300">Pago</label><select value={paymentMethod} onChange={e => { const m = e.target.value as PaymentMethod; setPaymentMethod(m); if (m !== 'tarjeta_credito' && m !== 'tarjeta_debito') setCardId(''); }} className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100">{(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map(m => <option key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</option>)}</select></div></div>{(paymentMethod === 'tarjeta_credito' || paymentMethod === 'tarjeta_debito') && <div><label className="text-xs font-bold text-zinc-300">Tarjeta</label><select value={cardId} onChange={e => setCardId(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100"><option value="">Sin asociar</option>{cards.filter(c => c.active && c.type === (paymentMethod === 'tarjeta_credito' ? 'credit' : 'debit')).map(c => <option key={c.id} value={c.id}>{c.name}{c.last4 ? ` · •••• ${c.last4}` : ''}</option>)}</select></div>}<div><label className="text-xs font-bold text-zinc-300">Notas</label><textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Ej. renovar si sube de precio..." className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-xs text-zinc-100" /></div><div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800"><button type="button" onClick={() => setOpenForm(false)} className="px-4 py-2 text-xs font-bold text-zinc-400">Cancelar</button><button type="submit" className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-orange-500 text-black font-black text-xs"><Check className="w-4 h-4" /> Guardar</button></div></div></form></div>}
+    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-400">COSTOS FIJOS DIGITALES</p>
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1 font-['Plus_Jakarta_Sans']">Suscripciones & Recurrentes</h2>
+        <p className="text-sm text-[#9AA6A0] mt-1">Controlá servicios periódicos, renovaciones programadas e impacto consolidado en el flujo de caja.</p>
+      </div>
+      <button onClick={openNew} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs shadow-md transition-all">
+        <Plus className="w-4 h-4 text-black" strokeWidth={3} /> Nueva Suscripción
+      </button>
+    </div>
+
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="rounded-2xl border border-zinc-800 bg-[#171B26] p-5 shadow-sm">
+        <p className="text-[10px] uppercase font-bold text-[#9AA6A0]">Suscripciones Activas</p>
+        <p className="text-2xl sm:text-3xl font-extrabold text-white mt-2 font-mono">{active.length}</p>
+      </div>
+      <div className="rounded-2xl border border-zinc-800 bg-[#171B26] p-5 shadow-sm">
+        <p className="text-[10px] uppercase font-bold text-[#9AA6A0]">Costo Mensual Consolidado</p>
+        <p className="text-xl sm:text-2xl font-extrabold text-emerald-400 mt-2 font-mono">{money(monthlyCost, currencySymbol)}</p>
+      </div>
+      <div className="rounded-2xl border border-zinc-800 bg-[#171B26] p-5 shadow-sm">
+        <p className="text-[10px] uppercase font-bold text-[#9AA6A0]">Impacto Anual Proyectado</p>
+        <p className="text-xl sm:text-2xl font-extrabold text-white mt-2 font-mono">{money(annualCost, currencySymbol)}</p>
+      </div>
+    </div>
+
+    {upcoming.length > 0 && (
+      <div className="rounded-2xl border border-zinc-800 bg-[#171B26] p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <BellRing className="w-5 h-5 text-emerald-400" />
+          <div>
+            <h3 className="font-extrabold text-white font-['Plus_Jakarta_Sans']">Próximas Renovaciones</h3>
+            <p className="text-xs text-[#9AA6A0]">Las 5 próximas fechas calendarizadas.</p>
+          </div>
+        </div>
+        <div className="space-y-2">
+          {upcoming.map(s => {
+            const d = daysUntil(s.nextChargeDate);
+            const urgent = d >= 0 && d <= 7;
+            return (
+              <div key={s.id} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-[#1C1F2A] p-3">
+                <div className="min-w-0">
+                  <p className="font-bold text-sm text-white truncate">{s.name}</p>
+                  <p className="text-[11px] text-[#9AA6A0]">{formatDate(s.nextChargeDate)} · {d < 0 ? 'Vencida' : d === 0 ? 'Hoy' : `en ${d} días`}</p>
+                </div>
+                <span className={`text-sm font-extrabold font-mono whitespace-nowrap ${urgent ? 'text-amber-400' : 'text-white'}`}>{money(s.amount, currencySymbol)}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )}
+
+    {suggestions.length > 0 && (
+      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <RefreshCw className="w-4 h-4 text-emerald-400" />
+          <div>
+            <h3 className="font-extrabold text-white font-['Plus_Jakarta_Sans'] text-sm">Patrones Recurrentes Detectados</h3>
+            <p className="text-xs text-[#9AA6A0]">Movimientos con periodicidad detectada que podés registrar como suscripción fija con un clic.</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {suggestions.map((t, i) => (
+            <button key={`${t.title}-${i}`} onClick={() => createFromSuggestion(t)} className="rounded-xl border border-zinc-800 bg-[#171B26] px-3.5 py-2 text-left hover:border-emerald-500/50 transition-colors">
+              <p className="text-xs font-bold text-white">{t.title}</p>
+              <p className="text-[10px] text-emerald-400 font-mono mt-0.5">{money(t.amount, currencySymbol)} · + Vincular</p>
+            </button>
+          ))}
+        </div>
+      </div>
+    )}
+
+    <div className="rounded-2xl border border-zinc-800 bg-[#171B26] overflow-hidden shadow-sm">
+      <div className="px-5 py-4 border-b border-zinc-800/80">
+        <h3 className="font-extrabold text-white font-['Plus_Jakarta_Sans']">Suscripciones en Cartera</h3>
+      </div>
+      {subscriptions.length === 0 ? (
+        <div className="p-8 text-center">
+          <CalendarClock className="w-9 h-9 mx-auto text-emerald-400 mb-3" />
+          <p className="font-bold text-white">Todavía no registraste suscripciones.</p>
+          <p className="text-xs text-[#9AA6A0] mt-1">Servicios de streaming, membresías de gimnasio, software y seguros.</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-zinc-800/60">
+          {subscriptions.map(s => {
+            const card = cards.find(c => c.id === s.cardId);
+            const cat = categories.find(c => c.id === s.categoryId);
+            return (
+              <div key={s.id} className={`p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-zinc-800/30 transition-colors ${!s.active ? 'opacity-50' : ''}`}>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${s.active ? 'bg-emerald-400' : 'bg-zinc-600'}`} />
+                    <p className="font-bold text-white truncate text-sm">{s.name}</p>
+                  </div>
+                  <p className="text-[11px] text-[#9AA6A0] mt-1 font-mono">
+                    {s.frequency === 'monthly' ? 'Mensual' : 'Anual'} · renovación: {formatDate(s.nextChargeDate)}{cat ? ` · ${cat.name}` : ''}{card ? ` · ${card.name}` : ''}
+                  </p>
+                  {s.notes && <p className="text-[11px] text-zinc-400 mt-1 truncate">{s.notes}</p>}
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="font-extrabold text-white font-mono text-sm sm:text-base">{money(s.amount, currencySymbol)}</p>
+                    <p className="text-[10px] text-[#9AA6A0]">{PAYMENT_METHOD_LABELS[s.paymentMethod]}</p>
+                  </div>
+                  <button onClick={() => openEdit(s)} className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800" title="Editar"><Pencil className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => { if (window.confirm(`¿Eliminar la suscripción ${s.name}?`)) onDelete(s.id); }} className="p-2 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-zinc-800" title="Eliminar"><Trash2 className="w-3.5 h-3.5" /></button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+
+    {openForm && (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setOpenForm(false)}>
+        <form onSubmit={submit} onClick={e => e.stopPropagation()} className="w-full max-w-md rounded-2xl border border-zinc-800 bg-[#171B26] shadow-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+            <div>
+              <h3 className="font-extrabold text-white font-['Plus_Jakarta_Sans']">{editing ? 'Editar Suscripción' : 'Nueva Suscripción'}</h3>
+              <p className="text-xs text-[#9AA6A0]">No crea transacciones no autorizadas.</p>
+            </div>
+            <button type="button" onClick={() => setOpenForm(false)} className="p-2 text-zinc-400 hover:text-white"><X className="w-4 h-4" /></button>
+          </div>
+          <div className="p-5 space-y-4">
+            <div>
+              <label className="text-xs font-bold text-zinc-300">Nombre del Servicio</label>
+              <input required value={name} onChange={e => setName(e.target.value)} placeholder="Ej. Spotify Premium, AWS, Gym" className="mt-1 w-full rounded-xl border border-zinc-800 bg-[#1C1F2A] px-3 py-2.5 text-xs text-white outline-none focus:border-emerald-500 font-semibold" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-zinc-300">Importe recurrente</label>
+                <input required type="number" min="0.01" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-800 bg-[#1C1F2A] px-3 py-2.5 text-xs text-white font-mono font-bold" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-zinc-300">Periodicidad</label>
+                <select value={frequency} onChange={e => setFrequency(e.target.value as SubscriptionFrequency)} className="mt-1 w-full rounded-xl border border-zinc-800 bg-[#1C1F2A] px-3 py-2.5 text-xs text-white">
+                  <option value="monthly">Mensual</option>
+                  <option value="yearly">Anual</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-zinc-300">Próxima Fecha de Débito</label>
+              <input required type="date" value={nextChargeDate} onChange={e => setNextChargeDate(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-800 bg-[#1C1F2A] px-3 py-2.5 text-xs text-white" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-zinc-300">Categoría</label>
+                <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-800 bg-[#1C1F2A] px-3 py-2.5 text-xs text-white">
+                  <option value="">Sin categoría</option>
+                  {categories.filter(c => c.type === 'expense' || c.type === 'both').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-zinc-300">Medio de Pago</label>
+                <select value={paymentMethod} onChange={e => { const m = e.target.value as PaymentMethod; setPaymentMethod(m); if (m !== 'tarjeta_credito' && m !== 'tarjeta_debito') setCardId(''); }} className="mt-1 w-full rounded-xl border border-zinc-800 bg-[#1C1F2A] px-3 py-2.5 text-xs text-white">
+                  {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map(m => <option key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</option>)}
+                </select>
+              </div>
+            </div>
+            {(paymentMethod === 'tarjeta_credito' || paymentMethod === 'tarjeta_debito') && (
+              <div>
+                <label className="text-xs font-bold text-zinc-300">Tarjeta Asignada</label>
+                <select value={cardId} onChange={e => setCardId(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-800 bg-[#1C1F2A] px-3 py-2.5 text-xs text-white">
+                  <option value="">Sin asociar</option>
+                  {cards.filter(c => c.active && c.type === (paymentMethod === 'tarjeta_credito' ? 'credit' : 'debit')).map(c => <option key={c.id} value={c.id}>{c.name}{c.last4 ? ` · •••• ${c.last4}` : ''}</option>)}
+                </select>
+              </div>
+            )}
+            <div>
+              <label className="text-xs font-bold text-zinc-300">Notas u observaciones</label>
+              <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Ej. cancelar si sube de precio..." className="mt-1 w-full rounded-xl border border-zinc-800 bg-[#1C1F2A] px-3 py-2.5 text-xs text-white outline-none focus:border-emerald-500" />
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
+              <button type="button" onClick={() => setOpenForm(false)} className="px-4 py-2 text-xs font-bold text-zinc-400 hover:text-white">Cancelar</button>
+              <button type="submit" className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-extrabold text-xs hover:bg-emerald-400">
+                <Check className="w-4 h-4" /> Guardar Suscripción
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    )}
   </section>;
 };

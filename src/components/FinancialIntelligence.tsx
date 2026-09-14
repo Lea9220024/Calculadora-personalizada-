@@ -68,10 +68,10 @@ export const FinancialIntelligence: React.FC<FinancialIntelligenceProps> = ({
   const pacePercent = paceVsBudget * 100;
   const projectionOver = projectionDelta > 0;
 
-  const expenseByCategory = expenses.reduce<Record<string, number>>((acc, tx) => {
-    acc[tx.categoryId] = (acc[tx.categoryId] || 0) + tx.amount;
-    return acc;
-  }, {});
+  const expenseByCategory: Record<string, number> = {};
+  for (const tx of expenses) {
+    expenseByCategory[tx.categoryId] = (expenseByCategory[tx.categoryId] || 0) + tx.amount;
+  }
 
   const topCategory = Object.entries(expenseByCategory).sort((a, b) => b[1] - a[1])[0];
   const topCategoryShare = totalSpent > 0 && topCategory ? (topCategory[1] / totalSpent) * 100 : 0;
@@ -91,7 +91,6 @@ export const FinancialIntelligence: React.FC<FinancialIntelligenceProps> = ({
     .filter(item => item.target > 0 && item.spent <= item.target)
     .sort((a, b) => (a.spent / a.target) - (b.spent / b.target))[0];
 
-  // 5.22: presupuesto inteligente. La recomendación es informativa y nunca modifica el presupuesto guardado.
   const incomeBasedTarget = totalIncome > 0 ? totalIncome * 0.8 : 0;
   const smartTarget = budgetTarget > 0 ? budgetTarget : incomeBasedTarget;
   const smartDailyTarget = isCurrentMonth && daysInMonth > 0 ? smartTarget / daysInMonth : 0;
@@ -108,42 +107,186 @@ export const FinancialIntelligence: React.FC<FinancialIntelligenceProps> = ({
   const smartStatus = smartTarget <= 0 ? 'sin-datos' : totalSpent <= smartTarget ? 'controlado' : 'excedido';
 
   const metricCards = [
-    { icon: CalendarClock, label: 'Disponible por día', value: isCurrentMonth && budgetTarget > 0 && daysRemaining > 0 ? formatCurrency(availablePerDay, currencySymbol) : budgetTarget > 0 ? '—' : 'Definí un presupuesto', detail: isCurrentMonth ? `${daysRemaining} días restantes` : 'Solo aplica al mes en curso', tone: availablePerDay >= dailySpendRate ? 'text-orange-400' : 'text-rose-400' },
-    { icon: Activity, label: 'Ritmo de gasto', value: formatCurrency(dailySpendRate, currencySymbol), detail: elapsedDays > 0 ? `${elapsedDays} días contabilizados` : 'Todavía no comenzó el mes', tone: 'text-zinc-100' },
-    { icon: TrendingUp, label: 'Proyección de cierre', value: formatCurrency(projectedClose, currencySymbol), detail: budgetTarget > 0 ? projectionOver ? `≈ ${formatCurrency(projectionDelta, currencySymbol)} por encima` : `≈ ${formatCurrency(Math.abs(projectionDelta), currencySymbol)} por debajo` : 'Sin presupuesto de referencia', tone: projectionOver ? 'text-rose-400' : 'text-orange-400' },
-    { icon: Gauge, label: 'Ritmo vs. objetivo', value: budgetTarget > 0 ? `${Math.abs(pacePercent).toFixed(0)}% ${pacePercent > 2 ? 'por encima' : pacePercent < -2 ? 'por debajo' : 'en línea'}` : 'Sin referencia', detail: budgetTarget > 0 ? 'Comparado con el avance ideal del mes' : 'Definí un presupuesto global', tone: pacePercent > 2 ? 'text-rose-400' : 'text-orange-400' }
+    { icon: CalendarClock, label: 'Disponible Diario', value: isCurrentMonth && budgetTarget > 0 && daysRemaining > 0 ? formatCurrency(availablePerDay, currencySymbol) : budgetTarget > 0 ? '—' : 'Definir Presupuesto', detail: isCurrentMonth ? `${daysRemaining} días restantes` : 'Solo mes activo', tone: availablePerDay >= dailySpendRate ? 'text-emerald-400' : 'text-rose-400' },
+    { icon: Activity, label: 'Ritmo de Gasto Diario', value: formatCurrency(dailySpendRate, currencySymbol), detail: elapsedDays > 0 ? `${elapsedDays} días transcurridos` : 'Inicio de período', tone: 'text-white' },
+    { icon: TrendingUp, label: 'Proyección al Cierre', value: formatCurrency(projectedClose, currencySymbol), detail: budgetTarget > 0 ? projectionOver ? `≈ ${formatCurrency(projectionDelta, currencySymbol)} de desvío` : `≈ ${formatCurrency(Math.abs(projectionDelta), currencySymbol)} de superávit` : 'Sin objetivo de referencia', tone: projectionOver ? 'text-rose-400' : 'text-emerald-400' },
+    { icon: Gauge, label: 'Desviación vs Objetivo', value: budgetTarget > 0 ? `${Math.abs(pacePercent).toFixed(0)}% ${pacePercent > 2 ? 'acelerado' : pacePercent < -2 ? 'contenido' : 'en línea'}` : 'Sin referencia', detail: budgetTarget > 0 ? 'Ritmo respecto a la progresión lineal' : 'Definir presupuesto', tone: pacePercent > 2 ? 'text-rose-400' : 'text-emerald-400' }
   ];
 
-  const alert = !budgetTarget || !isCurrentMonth ? null : projectionOver ? { icon: AlertTriangle, title: 'Estás gastando demasiado rápido', text: `A este ritmo proyectás superar tu presupuesto en ${formatCurrency(projectionDelta, currencySymbol)}.`, tone: 'border-rose-500/30 bg-rose-500/10 text-rose-300' } : { icon: CheckCircle2, title: 'Vas dentro del presupuesto', text: `A este ritmo proyectás cerrar ${formatCurrency(Math.abs(projectionDelta), currencySymbol)} por debajo del objetivo.`, tone: 'border-orange-500/30 bg-orange-500/10 text-orange-300' };
+  const alert = !budgetTarget || !isCurrentMonth ? null : projectionOver ? { icon: AlertTriangle, title: 'Intensidad de gasto por encima del plan', text: `A este ritmo proyectás sobrepasar tu presupuesto en ${formatCurrency(projectionDelta, currencySymbol)}.`, tone: 'border-rose-500/30 bg-rose-500/10 text-rose-300' } : { icon: CheckCircle2, title: 'Ejecución presupuestaria contenida', text: `A este ritmo proyectás finalizar ${formatCurrency(Math.abs(projectionDelta), currencySymbol)} por debajo del límite fijado.`, tone: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' };
 
   return (
-    <section className="rounded-3xl border border-zinc-800 bg-zinc-900/90 p-5 shadow-md">
+    <section className="rounded-2xl border border-zinc-800 bg-[#171B26] p-5 sm:p-6 shadow-sm">
       <div className="flex flex-col gap-1 mb-5">
-        <div className="flex items-center gap-2"><Gauge className="w-5 h-5 text-orange-400" strokeWidth={2.4} /><h2 className="text-lg font-black text-white">Inteligencia financiera</h2></div>
-        <p className="text-xs text-zinc-400">El presupuesto interpreta tu comportamiento y te señala dónde prestar atención.</p>
+        <div className="flex items-center gap-2">
+          <Gauge className="w-5 h-5 text-emerald-400" strokeWidth={2.4} />
+          <h2 className="text-xl font-extrabold text-white font-['Plus_Jakarta_Sans']">Inteligencia de Flujo & Proyección</h2>
+        </div>
+        <p className="text-xs text-[#9AA6A0]">Monitoreo forense de velocidad de gasto, alertas de consumo y modelado de fin de mes.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        {metricCards.map(({ icon: Icon, label, value, detail, tone }) => <div key={label} className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 min-h-[118px]"><div className="flex items-center gap-2 text-[11px] uppercase tracking-wider font-bold text-zinc-500"><Icon className="w-4 h-4" strokeWidth={2.2} />{label}</div><div className={`mt-3 text-xl font-black tracking-tight ${tone}`}>{value}</div><div className="mt-1 text-[11px] leading-4 text-zinc-500">{detail}</div></div>)}
+        {metricCards.map(({ icon: Icon, label, value, detail, tone }) => (
+          <div key={label} className="rounded-xl border border-zinc-800 bg-[#1C1F2A] p-4 min-h-[118px]">
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider font-bold text-[#9AA6A0]">
+              <Icon className="w-3.5 h-3.5 text-emerald-400" strokeWidth={2.2} />
+              {label}
+            </div>
+            <div className={`mt-2.5 text-xl font-extrabold font-mono tracking-tight ${tone}`}>{value}</div>
+            <div className="mt-1 text-[11px] font-mono leading-4 text-[#9AA6A0]">{detail}</div>
+          </div>
+        ))}
       </div>
 
-      {alert && <div className={`mt-4 rounded-2xl border px-4 py-3 flex items-start gap-3 ${alert.tone}`}><alert.icon className="w-5 h-5 shrink-0 mt-0.5" strokeWidth={2.2} /><div><div className="text-sm font-black">{alert.title}</div><div className="text-xs mt-0.5 opacity-90">{alert.text}</div></div></div>}
-
-      <div className="mt-5 rounded-2xl border border-orange-500/20 bg-orange-500/5 p-4">
-        <div className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-orange-400" /><h3 className="text-sm font-black text-white">Presupuesto inteligente</h3><span className="ml-auto text-[9px] uppercase tracking-wider font-bold text-orange-400">Recomendación</span></div>
-        <p className="text-[11px] text-zinc-400 mt-1">Calcula un objetivo de gasto sin modificar tu presupuesto guardado. Si existe un presupuesto manual, lo toma como referencia; si no, propone hasta el 80% de los ingresos registrados.</p>
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3"><div className="text-[10px] uppercase tracking-wider font-bold text-zinc-500">Objetivo sugerido</div><div className="mt-1 text-lg font-black text-orange-400">{smartTarget > 0 ? formatCurrency(smartTarget, currencySymbol) : '—'}</div><div className="text-[10px] text-zinc-500 mt-1">{budgetTarget > 0 ? 'Basado en tu presupuesto actual' : totalIncome > 0 ? '80% de tus ingresos registrados' : 'Necesito ingresos o presupuesto'}</div></div>
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3"><div className="text-[10px] uppercase tracking-wider font-bold text-zinc-500">Límite diario sugerido</div><div className="mt-1 text-lg font-black text-zinc-100">{smartDailyTarget > 0 ? formatCurrency(smartDailyTarget, currencySymbol) : '—'}</div><div className="text-[10px] text-zinc-500 mt-1">Distribución uniforme del objetivo mensual</div></div>
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3"><div className="text-[10px] uppercase tracking-wider font-bold text-zinc-500">Estado</div><div className={`mt-1 text-lg font-black ${smartStatus === 'excedido' ? 'text-rose-400' : smartStatus === 'controlado' ? 'text-orange-400' : 'text-zinc-400'}`}>{smartStatus === 'excedido' ? 'Por encima' : smartStatus === 'controlado' ? 'Controlado' : 'Sin datos'}</div><div className="text-[10px] text-zinc-500 mt-1">{smartStatus === 'excedido' ? `Exceso actual: ${formatCurrency(totalSpent - smartTarget, currencySymbol)}` : smartStatus === 'controlado' ? `Margen: ${formatCurrency(smartTarget - totalSpent, currencySymbol)}` : 'Completá ingresos o presupuesto'}</div></div>
+      {alert && (
+        <div className={`mt-4 rounded-xl border px-4 py-3 flex items-start gap-3 ${alert.tone}`}>
+          <alert.icon className="w-5 h-5 shrink-0 mt-0.5" strokeWidth={2.2} />
+          <div>
+            <div className="text-xs font-extrabold">{alert.title}</div>
+            <div className="text-xs mt-0.5 opacity-90">{alert.text}</div>
+          </div>
         </div>
-        {smartTarget > 0 && isCurrentMonth && <div className={`mt-3 rounded-xl border px-3 py-2 text-[11px] ${currentDailyGap >= 0 ? 'border-orange-500/20 bg-orange-500/5 text-zinc-400' : 'border-rose-500/20 bg-rose-500/5 text-zinc-400'}`}>{currentDailyGap >= 0 ? <>Tu ritmo actual está <strong className="text-orange-300">{formatCurrency(currentDailyGap, currencySymbol)}</strong> por debajo del límite diario sugerido.</> : <>Tu ritmo actual está <strong className="text-rose-300">{formatCurrency(Math.abs(currentDailyGap), currencySymbol)}</strong> por encima del límite diario sugerido.</>}</div>}
-        {categoryRecommendations.length > 0 && <div className="mt-4"><div className="text-[10px] uppercase tracking-wider font-bold text-zinc-500 mb-2">Distribución sugerida por categoría</div><div className="space-y-2">{categoryRecommendations.map(item => <div key={item.categoryId} className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3"><div className="flex justify-between gap-3 text-xs"><span className="font-bold text-zinc-200 truncate">{item.name}</span><span className="font-black text-zinc-300">{formatCurrency(item.recommended, currencySymbol)}</span></div><div className="mt-1 text-[10px] text-zinc-500">Hoy representa {(item.share * 100).toFixed(0)}% del gasto · gastado {formatCurrency(item.spent, currencySymbol)}</div></div>)}</div></div>}
+      )}
+
+      <div className="mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 sm:p-5">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-emerald-400" />
+          <h3 className="text-sm font-extrabold text-white font-['Plus_Jakarta_Sans']">Presupuesto Sugerido & Distribución Óptima</h3>
+          <span className="ml-auto text-[9px] uppercase tracking-wider font-extrabold text-emerald-400 border border-emerald-500/25 bg-emerald-500/10 rounded-full px-2 py-0.5 font-mono">ANÁLISIS</span>
+        </div>
+        <p className="text-xs text-[#9AA6A0] mt-1">Calcula un marco de gasto de máxima eficiencia sin alterar tus presupuestos manuales registrados.</p>
+        
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-xl border border-zinc-800 bg-[#171B26] p-3.5">
+            <div className="text-[10px] uppercase tracking-wider font-bold text-[#9AA6A0]">Objetivo Sugerido</div>
+            <div className="mt-1 text-lg font-extrabold text-emerald-400 font-mono">{smartTarget > 0 ? formatCurrency(smartTarget, currencySymbol) : '—'}</div>
+            <div className="text-[10px] text-[#9AA6A0] mt-1">{budgetTarget > 0 ? 'Basado en tu presupuesto actual' : totalIncome > 0 ? '80% de tus ingresos registrados' : 'Requiere ingresos o presupuesto'}</div>
+          </div>
+          <div className="rounded-xl border border-zinc-800 bg-[#171B26] p-3.5">
+            <div className="text-[10px] uppercase tracking-wider font-bold text-[#9AA6A0]">Límite Diario Sugerido</div>
+            <div className="mt-1 text-lg font-extrabold text-white font-mono">{smartDailyTarget > 0 ? formatCurrency(smartDailyTarget, currencySymbol) : '—'}</div>
+            <div className="text-[10px] text-[#9AA6A0] mt-1">Distribución lineal para 30 días</div>
+          </div>
+          <div className="rounded-xl border border-zinc-800 bg-[#171B26] p-3.5">
+            <div className="text-[10px] uppercase tracking-wider font-bold text-[#9AA6A0]">Estado Actual</div>
+            <div className={`mt-1 text-lg font-extrabold font-mono ${smartStatus === 'excedido' ? 'text-rose-400' : smartStatus === 'controlado' ? 'text-emerald-400' : 'text-zinc-400'}`}>{smartStatus === 'excedido' ? 'Desviado' : smartStatus === 'controlado' ? 'Controlado' : 'Sin datos'}</div>
+            <div className="text-[10px] text-[#9AA6A0] mt-1">{smartStatus === 'excedido' ? `Exceso: ${formatCurrency(totalSpent - smartTarget, currencySymbol)}` : smartStatus === 'controlado' ? `Margen: ${formatCurrency(smartTarget - totalSpent, currencySymbol)}` : 'Sin registros suficientes'}</div>
+          </div>
+        </div>
+
+        {smartTarget > 0 && isCurrentMonth && (
+          <div className={`mt-3 rounded-xl border px-3.5 py-2.5 text-xs ${currentDailyGap >= 0 ? 'border-emerald-500/20 bg-emerald-500/5 text-zinc-300' : 'border-rose-500/20 bg-rose-500/5 text-zinc-300'}`}>
+            {currentDailyGap >= 0 ? (
+              <>Tu ritmo diario actual está <strong className="text-emerald-400 font-mono">{formatCurrency(currentDailyGap, currencySymbol)}</strong> por debajo del techo prudente sugerido.</>
+            ) : (
+              <>Tu ritmo diario actual excede por <strong className="text-rose-400 font-mono">{formatCurrency(Math.abs(currentDailyGap), currencySymbol)}</strong> el límite recomendado.</>
+            )}
+          </div>
+        )}
+
+        {categoryRecommendations.length > 0 && (
+          <div className="mt-4">
+            <div className="text-[10px] uppercase tracking-wider font-bold text-[#9AA6A0] mb-2">Ponderación Recomendada por Categoría</div>
+            <div className="space-y-2">
+              {categoryRecommendations.map(item => (
+                <div key={item.categoryId} className="rounded-xl border border-zinc-800 bg-[#171B26] p-3">
+                  <div className="flex justify-between gap-3 text-xs">
+                    <span className="font-bold text-white truncate">{item.name}</span>
+                    <span className="font-extrabold text-emerald-400 font-mono">{formatCurrency(item.recommended, currencySymbol)}</span>
+                  </div>
+                  <div className="mt-1 text-[11px] text-[#9AA6A0] font-mono">
+                    Participación: {(item.share * 100).toFixed(0)}% · Consumido {formatCurrency(item.spent, currencySymbol)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {isCurrentMonth && budgetTarget > 0 && <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3"><div className="rounded-2xl border border-zinc-800 bg-zinc-950/50 px-4 py-3 flex items-start gap-3"><Lightbulb className="w-4 h-4 text-orange-400 mt-0.5 shrink-0" /><div className="text-xs text-zinc-400">{availablePerDay > 0 ? <>Podés gastar hasta <strong className="text-zinc-200">{formatCurrency(availablePerDay, currencySymbol)}</strong> por día para mantenerte dentro del presupuesto.</> : <>El presupuesto ya fue consumido. Cualquier gasto adicional aumenta el desvío.</>}</div></div>{topCategory && <div className="rounded-2xl border border-zinc-800 bg-zinc-950/50 px-4 py-3 flex items-start gap-3"><TrendingUp className="w-4 h-4 text-orange-400 mt-0.5 shrink-0" /><div className="text-xs text-zinc-400">Tu categoría con mayor gasto concentra aproximadamente <strong className="text-zinc-200">{topCategoryShare.toFixed(0)}%</strong> del gasto del mes.</div></div>}</div>}
+      {isCurrentMonth && budgetTarget > 0 && (
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-zinc-800 bg-[#1C1F2A] px-4 py-3 flex items-start gap-3">
+            <Lightbulb className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+            <div className="text-xs text-[#9AA6A0]">
+              {availablePerDay > 0 ? (
+                <>Margen de maniobra: <strong className="text-white font-mono">{formatCurrency(availablePerDay, currencySymbol)}</strong>/día para respetar el presupuesto global.</>
+              ) : (
+                <>Presupuesto total absorbido. Cualquier desembolso adicional genera déficit neto en el ciclo.</>
+              )}
+            </div>
+          </div>
+          {topCategory && (
+            <div className="rounded-xl border border-zinc-800 bg-[#1C1F2A] px-4 py-3 flex items-start gap-3">
+              <TrendingUp className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+              <div className="text-xs text-[#9AA6A0]">
+                Concentración de egresos: la categoría mayoritaria absorbe el <strong className="text-white font-mono">{topCategoryShare.toFixed(0)}%</strong> del volumen total.
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
-      {categoryInsights.length > 0 && <div className="mt-5 pt-5 border-t border-zinc-800"><div className="flex items-center justify-between mb-3"><div><h3 className="text-sm font-black text-white">Dónde ajustar</h3><p className="text-[11px] text-zinc-500">Comparación entre gasto real y objetivo por categoría.</p></div>{biggestDeviation && <span className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Mayor desvío</span>}</div><div className="space-y-2.5">{categoryInsights.slice(0, 5).map(item => { const ratio = item.target > 0 ? Math.min(100, item.percentage) : 0; const over = item.target > 0 && item.spent > item.target; return <div key={item.categoryId} className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3"><div className="flex items-center justify-between gap-3"><span className="text-xs font-bold text-zinc-200 truncate">{item.name}</span><div className="text-right shrink-0"><span className={`text-xs font-black ${over ? 'text-rose-400' : 'text-orange-400'}`}>{formatCurrency(item.spent, currencySymbol)}</span>{item.target > 0 && <span className="text-[10px] text-zinc-500"> / {formatCurrency(item.target, currencySymbol)}</span>}</div></div>{item.target > 0 ? <><div className="mt-2 h-1.5 rounded-full bg-zinc-800 overflow-hidden"><div className={`h-full rounded-full ${over ? 'bg-rose-500' : 'bg-orange-500'}`} style={{ width: `${ratio}%` }} /></div><div className="mt-1.5 flex justify-between text-[10px] text-zinc-500"><span>{item.percentage.toFixed(0)}% del objetivo</span><span className={over ? 'text-rose-400 font-bold' : 'text-zinc-400'}>{over ? `+${formatCurrency(item.deviation, currencySymbol)}` : `${formatCurrency(Math.max(0, item.target - item.spent), currencySymbol)} disponibles`}</span></div></> : <div className="mt-1.5 text-[10px] text-zinc-500">Sin objetivo definido para esta categoría.</div>}</div>; })}</div>{biggestDeviation ? <div className="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/5 px-3 py-2 flex items-center gap-2"><TrendingDown className="w-4 h-4 text-rose-400 shrink-0" /><span className="text-[11px] text-zinc-400">El principal desvío está en <strong className="text-zinc-200">{biggestDeviation.name}</strong>: llevás <strong className="text-rose-300">{formatCurrency(biggestDeviation.deviation, currencySymbol)}</strong> por encima del objetivo.</span></div> : bestControlled ? <div className="mt-3 rounded-xl border border-orange-500/20 bg-orange-500/5 px-3 py-2 flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-orange-400 shrink-0" /><span className="text-[11px] text-zinc-400">Buen control en <strong className="text-zinc-200">{bestControlled.name}</strong>: estás usando solo <strong className="text-zinc-200">{bestControlled.percentage.toFixed(0)}%</strong> de su objetivo.</span></div> : null}</div>}
+      {categoryInsights.length > 0 && (
+        <div className="mt-5 pt-5 border-t border-zinc-800/80">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-sm font-extrabold text-white font-['Plus_Jakarta_Sans']">Auditoría de Desviaciones</h3>
+              <p className="text-xs text-[#9AA6A0]">Comparativa de gasto real contra partidas asignadas por rubro.</p>
+            </div>
+            {biggestDeviation && <span className="text-[10px] font-bold uppercase tracking-wider text-rose-400 font-mono">Mayor Desvío</span>}
+          </div>
+          <div className="space-y-2.5">
+            {categoryInsights.slice(0, 5).map(item => {
+              const ratio = item.target > 0 ? Math.min(100, item.percentage) : 0;
+              const over = item.target > 0 && item.spent > item.target;
+              return (
+                <div key={item.categoryId} className="rounded-xl border border-zinc-800 bg-[#1C1F2A] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs font-bold text-white truncate">{item.name}</span>
+                    <div className="text-right shrink-0">
+                      <span className={`text-xs font-extrabold font-mono ${over ? 'text-rose-400' : 'text-emerald-400'}`}>
+                        {formatCurrency(item.spent, currencySymbol)}
+                      </span>
+                      {item.target > 0 && <span className="text-[10px] text-[#9AA6A0] font-mono"> / {formatCurrency(item.target, currencySymbol)}</span>}
+                    </div>
+                  </div>
+                  {item.target > 0 ? (
+                    <>
+                      <div className="mt-2 h-1.5 rounded-full bg-[#262A35] overflow-hidden">
+                        <div className={`h-full rounded-full ${over ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${ratio}%` }} />
+                      </div>
+                      <div className="mt-1.5 flex justify-between text-[10px] font-mono text-[#9AA6A0]">
+                        <span>{item.percentage.toFixed(0)}% del límite</span>
+                        <span className={over ? 'text-rose-400 font-bold' : 'text-emerald-400'}>
+                          {over ? `+${formatCurrency(item.deviation, currencySymbol)}` : `${formatCurrency(Math.max(0, item.target - item.spent), currencySymbol)} libre`}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="mt-1.5 text-[10px] text-[#9AA6A0]">Sin partida fijada para esta categoría.</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {biggestDeviation ? (
+            <div className="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/5 px-3.5 py-2.5 flex items-center gap-2">
+              <TrendingDown className="w-4 h-4 text-rose-400 shrink-0" />
+              <span className="text-xs text-zinc-300">
+                Principal fuga detectada en <strong className="text-white">{biggestDeviation.name}</strong>: excede por <strong className="text-rose-400 font-mono">{formatCurrency(biggestDeviation.deviation, currencySymbol)}</strong> su meta fijada.
+              </span>
+            </div>
+          ) : bestControlled ? (
+            <div className="mt-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3.5 py-2.5 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="text-xs text-zinc-300">
+                Disciplina óptima en <strong className="text-white">{bestControlled.name}</strong>: consumo contenido al <strong className="text-emerald-400 font-mono">{bestControlled.percentage.toFixed(0)}%</strong> de su cuota.
+              </span>
+            </div>
+          ) : null}
+        </div>
+      )}
     </section>
   );
 };

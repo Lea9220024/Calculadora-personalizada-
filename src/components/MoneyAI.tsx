@@ -119,11 +119,63 @@ export const MoneyAI: React.FC<MoneyAIProps> = ({ currentMonthKey, transactions,
     { icon: CalendarClock, label: '¿Cuánto tengo comprometido en 90 días?' }
   ];
 
-  return <section className="rounded-3xl border border-zinc-800 bg-zinc-900/90 p-5 shadow-md">
-    <div className="flex items-start gap-3 mb-5"><div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center"><Bot className="w-5 h-5 text-orange-400" /></div><div><div className="flex items-center gap-2"><h2 className="text-lg font-black text-white">Money AI</h2><span className="text-[9px] uppercase tracking-wider font-bold text-orange-400 border border-orange-500/20 rounded-full px-2 py-0.5">C.R.E.A.M.</span></div><p className="text-xs text-zinc-400 mt-1">Tu copiloto financiero: analiza tus datos registrados y te ayuda a decidir.</p></div></div>
-    <div className="flex flex-wrap gap-2 mb-4">{quick.map(item => <button key={item.label} onClick={() => ask(item.label)} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-800 bg-zinc-950/60 hover:border-orange-500/30 hover:text-orange-300 text-[11px] font-bold text-zinc-300"><item.icon className="w-3.5 h-3.5" />{item.label}</button>)}</div>
-    <div className="min-h-[260px] max-h-[420px] overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-950/50 p-3 space-y-3">{messages.length === 0 ? <div className="h-[250px] flex flex-col items-center justify-center text-center px-6"><Sparkles className="w-7 h-7 text-orange-400 mb-3" /><p className="text-sm font-bold text-zinc-200">Preguntame sobre tus finanzas.</p><p className="text-xs text-zinc-500 mt-1 max-w-md">Las respuestas usan los movimientos, presupuesto, tarjetas, cuotas, suscripciones, patrimonio y compromisos que ya tenés registrados.</p></div> : messages.map((m, i) => <div key={`${i}-${m.role}`} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[88%] rounded-2xl px-4 py-3 text-xs leading-5 ${m.role === 'user' ? 'bg-emerald-500 text-black font-bold' : 'bg-zinc-900 border border-zinc-800 text-zinc-300'}`}>{m.text}</div></div>)}</div>
-    <div className="mt-3 flex gap-2"><input value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') ask(); }} placeholder="Ej.: ¿Puedo permitirme comprar algo de $200.000?" className="flex-1 min-w-0 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-xs text-zinc-100 outline-none focus:border-orange-500/50" /><button onClick={() => ask()} className="rounded-xl bg-orange-500 px-4 text-black font-black hover:bg-orange-400" aria-label="Enviar pregunta"><Send className="w-4 h-4" /></button></div>
-    <div className="mt-4 flex items-start gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2"><ShieldCheck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" /><p className="text-[10px] text-zinc-500">Money AI solo analiza y recomienda. No modifica movimientos, presupuestos, tarjetas ni patrimonio.</p></div>
+  return <section className="rounded-2xl border border-zinc-800 bg-[#171B26] p-5 sm:p-6 shadow-sm">
+    <div className="flex items-start gap-3.5 mb-5">
+      <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+        <Bot className="w-5 h-5 text-purple-400" />
+      </div>
+      <div>
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-extrabold text-white font-['Plus_Jakarta_Sans']">Copiloto Money AI</h2>
+          <span className="text-[9px] uppercase tracking-wider font-extrabold text-purple-400 border border-purple-500/25 bg-purple-500/10 rounded-full px-2 py-0.5 font-mono">SOVEREIGN AI</span>
+        </div>
+        <p className="text-xs text-[#9AA6A0] mt-1">Análisis predictivo de liquidez, carga de compromisos y auditoría instantánea de solvencia basada en tus registros.</p>
+      </div>
+    </div>
+
+    <div className="flex flex-wrap gap-2 mb-4">
+      {quick.map(item => (
+        <button key={item.label} onClick={() => ask(item.label)} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-800 bg-[#1C1F2A] hover:border-purple-500/40 hover:text-purple-300 text-xs font-semibold text-zinc-300 transition-colors">
+          <item.icon className="w-3.5 h-3.5 text-purple-400" />
+          {item.label}
+        </button>
+      ))}
+    </div>
+
+    <div className="min-h-[260px] max-h-[420px] overflow-y-auto rounded-2xl border border-zinc-800 bg-[#0F131D] p-4 space-y-3">
+      {messages.length === 0 ? (
+        <div className="h-[250px] flex flex-col items-center justify-center text-center px-6">
+          <Sparkles className="w-8 h-8 text-purple-400/80 mb-3" />
+          <p className="text-sm font-bold text-white">Consultá cualquier inquietud sobre tu estructura financiera.</p>
+          <p className="text-xs text-[#9AA6A0] mt-1 max-w-md">Evaluaciones calculadas con tus transacciones, presupuestos, límites de tarjetas, cuotas, suscripciones y patrimonio neto.</p>
+        </div>
+      ) : (
+        messages.map((m, i) => (
+          <div key={`${i}-${m.role}`} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs leading-5 font-medium ${m.role === 'user' ? 'bg-emerald-500 text-black font-bold' : 'bg-[#1C1F2A] border border-zinc-800 text-zinc-200'}`}>
+              {m.text}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+
+    <div className="mt-3 flex gap-2">
+      <input 
+        value={question} 
+        onChange={e => setQuestion(e.target.value)} 
+        onKeyDown={e => { if (e.key === 'Enter') ask(); }} 
+        placeholder="Ej.: ¿Puedo permitirme comprar algo de $200.000? o ¿Qué debería reducir?" 
+        className="flex-1 min-w-0 rounded-xl border border-zinc-800 bg-[#1C1F2A] px-4 py-3 text-xs text-white outline-none focus:border-purple-500 font-medium" 
+      />
+      <button onClick={() => ask()} className="rounded-xl bg-purple-500 hover:bg-purple-400 px-4 text-black font-extrabold flex items-center justify-center transition-colors" aria-label="Enviar pregunta">
+        <Send className="w-4 h-4 text-black" />
+      </button>
+    </div>
+
+    <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3.5 py-2.5">
+      <ShieldCheck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+      <p className="text-[11px] text-[#9AA6A0]">Money AI es estrictamente analítico y consultivo. No genera ni altera registros, cuentas ni presupuestos reales.</p>
+    </div>
   </section>;
 };

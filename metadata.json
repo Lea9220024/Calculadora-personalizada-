@@ -1,6 +1,6 @@
 {
   "name": "Control de Gastos Mensuales",
-  "description": "Aplicación personal para la gestión, seguimiento y análisis de gastos e ingresos mensuales con presupuestos y estadísticas.",
+  "description": "C.R.E.A.M. — Sovereign Financial Intelligence: Sistema de gestión financiera personal y patrimonial de alta precisión.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

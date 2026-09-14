@@ -61,11 +61,134 @@ export const FutureCommitments: React.FC<FutureCommitmentsProps> = ({ commitment
   const cardName = (id?: string) => cards.find(c => c.id === id)?.name;
 
   return <section className="space-y-6">
-    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-orange-400">5.30 · Compromisos futuros</p><h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1">Lo que ya está comprometido.</h2><p className="text-sm text-zinc-400 mt-2 max-w-2xl">Cuotas, suscripciones, gastos recurrentes y compromisos manuales. C.R.E.A.M. los proyecta sin crear movimientos nuevos.</p></div><button onClick={reset} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-black font-extrabold text-sm"><Plus className="w-4 h-4" />Agregar compromiso</button></div>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4"><div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5"><div className="text-xs font-bold uppercase text-zinc-400">Próximos 30 días</div><div className="text-2xl font-extrabold text-white mt-3">{money(committed30, currencySymbol)}</div><p className="text-xs text-zinc-500 mt-1">{next30.length} compromisos</p></div><div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5"><div className="text-xs font-bold uppercase text-zinc-400">Próximos 90 días</div><div className="text-2xl font-extrabold text-white mt-3">{money(committed90, currencySymbol)}</div><p className="text-xs text-zinc-500 mt-1">{next90.length} compromisos</p></div><div className="rounded-2xl border border-orange-500/30 bg-zinc-950 p-5"><div className="flex items-center gap-2 text-orange-400 text-xs font-bold uppercase"><CalendarClock className="w-4 h-4" /> Próximo vencimiento</div><div className="text-xl font-extrabold text-white mt-3">{upcoming[0] ? money(upcoming[0].amount, currencySymbol) : '—'}</div><p className="text-xs text-zinc-500 mt-1">{upcoming[0] ? `${upcoming[0].name} · ${upcoming[0].dueDate}` : 'No hay compromisos futuros'}</p></div></div>
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5"><div className="flex items-start gap-3"><AlertTriangle className="w-5 h-5 text-orange-400 mt-0.5" /><div><h3 className="font-extrabold text-white">Dinero que todavía no gastaste, pero ya no deberías considerar libre</h3><p className="text-sm text-zinc-400 mt-1">Estos importes son una proyección. Los movimientos reales siguen siendo independientes y no se generan automáticamente.</p></div></div></div>
-    {showForm && <form onSubmit={submit} className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 space-y-4"><div className="flex justify-between items-center"><h3 className="font-extrabold text-white">{editing ? 'Editar compromiso' : 'Nuevo compromiso'}</h3><button type="button" onClick={() => setShowForm(false)} className="text-zinc-500 hover:text-white">Cerrar</button></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><label className="text-xs text-zinc-400">Concepto<input value={name} onChange={e => setName(e.target.value)} className="mt-1 w-full rounded-xl bg-zinc-900 border border-zinc-800 px-3 py-2.5 text-white" required /></label><label className="text-xs text-zinc-400">Importe<input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" className="mt-1 w-full rounded-xl bg-zinc-900 border border-zinc-800 px-3 py-2.5 text-white" required /></label><label className="text-xs text-zinc-400">Fecha<input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="mt-1 w-full rounded-xl bg-zinc-900 border border-zinc-800 px-3 py-2.5 text-white" required /></label><label className="text-xs text-zinc-400">Categoría<select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="mt-1 w-full rounded-xl bg-zinc-900 border border-zinc-800 px-3 py-2.5 text-white"><option value="">Sin categoría</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label className="text-xs text-zinc-400">Tarjeta<select value={cardId} onChange={e => setCardId(e.target.value)} className="mt-1 w-full rounded-xl bg-zinc-900 border border-zinc-800 px-3 py-2.5 text-white"><option value="">Sin tarjeta</option>{cards.map(c => <option key={c.id} value={c.id}>{c.name}{c.last4 ? ` · •••• ${c.last4}` : ''}</option>)}</select></label><label className="text-xs text-zinc-400">Nota<input value={notes} onChange={e => setNotes(e.target.value)} className="mt-1 w-full rounded-xl bg-zinc-900 border border-zinc-800 px-3 py-2.5 text-white" /></label></div><div className="flex justify-end gap-2"><button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl border border-zinc-800 text-zinc-300">Cancelar</button><button type="submit" className="px-4 py-2 rounded-xl bg-orange-500 text-black font-extrabold">Guardar</button></div></form>}
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-950 overflow-hidden"><div className="px-5 py-4 border-b border-zinc-800"><h3 className="font-extrabold text-white">Próximos compromisos</h3><p className="text-xs text-zinc-500 mt-1">Incluye proyecciones automáticas y registros manuales.</p></div>{upcoming.length === 0 ? <div className="p-10 text-center text-zinc-500">No hay compromisos futuros registrados.</div> : <div className="divide-y divide-zinc-800/80">{upcoming.map(c => { const days = diffDays(c.dueDate); const automaticItem = c.type !== 'manual'; return <div key={c.id} className="p-4 flex items-center gap-3"><div className={`w-10 h-10 rounded-xl flex items-center justify-center ${days <= 7 ? 'bg-orange-500/10 text-orange-400' : 'bg-zinc-900 text-zinc-400'}`}>{c.type === 'installment' ? <CreditCard className="w-4 h-4" /> : c.type === 'subscription' || c.type === 'recurring' ? <Repeat2 className="w-4 h-4" /> : <CalendarClock className="w-4 h-4" />}</div><div className="min-w-0 flex-1"><div className="font-bold text-zinc-100 truncate">{c.name}</div><div className="text-xs text-zinc-500">{label(c.type)}{categoryName(c.categoryId) ? ` · ${categoryName(c.categoryId)}` : ''}{cardName(c.cardId) ? ` · ${cardName(c.cardId)}` : ''}</div></div><div className="text-right"><div className="font-extrabold text-zinc-100">{money(c.amount, currencySymbol)}</div><div className={`text-xs ${days <= 7 ? 'text-orange-400' : 'text-zinc-500'}`}>{days === 0 ? 'Hoy' : days > 0 ? `En ${days} días` : 'Vencido'} · {c.dueDate}</div></div>{!automaticItem && <><button onClick={() => edit(c)} className="p-2 text-zinc-500 hover:text-white"><Pencil className="w-4 h-4" /></button><button onClick={() => onDelete(c.id)} className="p-2 text-zinc-500 hover:text-red-400"><Trash2 className="w-4 h-4" /></button></>}</div> })}</div>}</div>
-    <div className="flex items-center gap-2 text-xs text-zinc-500"><CheckCircle2 className="w-4 h-4 text-emerald-400" />Las proyecciones no modifican movimientos, presupuestos, tarjetas, cuotas ni suscripciones.</div>
+    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-400">FLUJO PROYECTADO</p>
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1 font-['Plus_Jakarta_Sans']">Compromisos Futuros</h2>
+        <p className="text-sm text-[#9AA6A0] mt-1 max-w-2xl">Cuotas, suscripciones, gastos recurrentes y compromisos manuales. C.R.E.A.M. los proyecta sin crear movimientos nuevos.</p>
+      </div>
+      <button onClick={reset} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs shadow-md transition-all">
+        <Plus className="w-4 h-4 text-black" strokeWidth={3} /> Agregar Compromiso
+      </button>
+    </div>
+
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="rounded-2xl border border-zinc-800 bg-[#171B26] p-5 shadow-sm">
+        <div className="text-[11px] font-bold uppercase text-[#9AA6A0]">Próximos 30 días</div>
+        <div className="text-2xl sm:text-3xl font-extrabold text-white mt-2 font-mono">{money(committed30, currencySymbol)}</div>
+        <p className="text-xs text-[#9AA6A0] mt-1">{next30.length} compromisos computados</p>
+      </div>
+      <div className="rounded-2xl border border-zinc-800 bg-[#171B26] p-5 shadow-sm">
+        <div className="text-[11px] font-bold uppercase text-[#9AA6A0]">Próximos 90 días</div>
+        <div className="text-2xl sm:text-3xl font-extrabold text-white mt-2 font-mono">{money(committed90, currencySymbol)}</div>
+        <p className="text-xs text-[#9AA6A0] mt-1">{next90.length} compromisos proyectados</p>
+      </div>
+      <div className="rounded-2xl border border-emerald-500/30 bg-[#171B26] p-5 shadow-sm">
+        <div className="flex items-center gap-2 text-emerald-400 text-[11px] font-bold uppercase">
+          <CalendarClock className="w-4 h-4 text-emerald-400" /> Próximo vencimiento
+        </div>
+        <div className="text-xl sm:text-2xl font-extrabold text-emerald-400 mt-2 font-mono">
+          {upcoming[0] ? money(upcoming[0].amount, currencySymbol) : '—'}
+        </div>
+        <p className="text-xs text-[#9AA6A0] mt-1 truncate">
+          {upcoming[0] ? `${upcoming[0].name} · ${upcoming[0].dueDate}` : 'No hay compromisos futuros'}
+        </p>
+      </div>
+    </div>
+
+    <div className="rounded-2xl border border-zinc-800 bg-[#171B26] p-5 shadow-sm">
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
+        <div>
+          <h3 className="font-extrabold text-white font-['Plus_Jakarta_Sans'] text-sm">Dinero comprometido no disponible</h3>
+          <p className="text-xs text-[#9AA6A0] mt-1">Estos importes son una proyección del flujo de caja. Los movimientos reales siguen siendo independientes y no se debitan automáticamente.</p>
+        </div>
+      </div>
+    </div>
+
+    {showForm && (
+      <form onSubmit={submit} className="rounded-2xl border border-zinc-800 bg-[#171B26] p-5 space-y-4 shadow-xl">
+        <div className="flex justify-between items-center">
+          <h3 className="font-extrabold text-white font-['Plus_Jakarta_Sans']">{editing ? 'Editar Compromiso' : 'Nuevo Compromiso'}</h3>
+          <button type="button" onClick={() => setShowForm(false)} className="text-zinc-400 hover:text-white">Cerrar</button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label className="text-xs text-zinc-400">Concepto
+            <input value={name} onChange={e => setName(e.target.value)} className="mt-1 w-full rounded-xl bg-[#1C1F2A] border border-zinc-800 px-3 py-2.5 text-white text-xs outline-none focus:border-emerald-500 font-semibold" required />
+          </label>
+          <label className="text-xs text-zinc-400">Importe
+            <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" className="mt-1 w-full rounded-xl bg-[#1C1F2A] border border-zinc-800 px-3 py-2.5 text-white text-xs outline-none focus:border-emerald-500 font-mono font-bold" required />
+          </label>
+          <label className="text-xs text-zinc-400">Fecha de Vencimiento
+            <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="mt-1 w-full rounded-xl bg-[#1C1F2A] border border-zinc-800 px-3 py-2.5 text-white text-xs" required />
+          </label>
+          <label className="text-xs text-zinc-400">Categoría
+            <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="mt-1 w-full rounded-xl bg-[#1C1F2A] border border-zinc-800 px-3 py-2.5 text-white text-xs">
+              <option value="">Sin categoría</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-zinc-400">Medio de Pago / Tarjeta
+            <select value={cardId} onChange={e => setCardId(e.target.value)} className="mt-1 w-full rounded-xl bg-[#1C1F2A] border border-zinc-800 px-3 py-2.5 text-white text-xs">
+              <option value="">Sin tarjeta</option>
+              {cards.map(c => <option key={c.id} value={c.id}>{c.name}{c.last4 ? ` · •••• ${c.last4}` : ''}</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-zinc-400">Nota u observación
+            <input value={notes} onChange={e => setNotes(e.target.value)} className="mt-1 w-full rounded-xl bg-[#1C1F2A] border border-zinc-800 px-3 py-2.5 text-white text-xs outline-none focus:border-emerald-500" />
+          </label>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl border border-zinc-800 text-zinc-300 text-xs font-bold hover:bg-zinc-800">Cancelar</button>
+          <button type="submit" className="px-4 py-2 rounded-xl bg-emerald-500 text-black font-extrabold text-xs hover:bg-emerald-400">Guardar Compromiso</button>
+        </div>
+      </form>
+    )}
+
+    <div className="rounded-2xl border border-zinc-800 bg-[#171B26] overflow-hidden shadow-sm">
+      <div className="px-5 py-4 border-b border-zinc-800/80">
+        <h3 className="font-extrabold text-white font-['Plus_Jakarta_Sans']">Próximos Compromisos</h3>
+        <p className="text-xs text-[#9AA6A0] mt-0.5">Incluye proyecciones automáticas de cuotas, servicios y registros manuales.</p>
+      </div>
+      {upcoming.length === 0 ? (
+        <div className="p-10 text-center text-[#9AA6A0] text-sm">No hay compromisos futuros registrados.</div>
+      ) : (
+        <div className="divide-y divide-zinc-800/60">
+          {upcoming.map(c => {
+            const days = diffDays(c.dueDate);
+            const automaticItem = c.type !== 'manual';
+            return (
+              <div key={c.id} className="p-4 flex items-center gap-3 hover:bg-zinc-800/30 transition-colors">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${days <= 7 ? 'bg-amber-500/10 text-amber-400' : 'bg-zinc-800/60 text-[#9AA6A0]'}`}>
+                  {c.type === 'installment' ? <CreditCard className="w-4 h-4" /> : c.type === 'subscription' || c.type === 'recurring' ? <Repeat2 className="w-4 h-4" /> : <CalendarClock className="w-4 h-4" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-white text-sm truncate">{c.name}</div>
+                  <div className="text-xs text-[#9AA6A0] mt-0.5">
+                    {label(c.type)}{categoryName(c.categoryId) ? ` · ${categoryName(c.categoryId)}` : ''}{cardName(c.cardId) ? ` · ${cardName(c.cardId)}` : ''}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-extrabold text-white font-mono text-sm sm:text-base">{money(c.amount, currencySymbol)}</div>
+                  <div className={`text-xs mt-0.5 font-mono ${days <= 7 ? 'text-amber-400 font-bold' : 'text-[#9AA6A0]'}`}>
+                    {days === 0 ? 'Hoy' : days > 0 ? `En ${days} días` : 'Vencido'} · {c.dueDate}
+                  </div>
+                </div>
+                {!automaticItem && (
+                  <>
+                    <button onClick={() => edit(c)} className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => onDelete(c.id)} className="p-2 text-zinc-400 hover:text-rose-400 rounded-lg hover:bg-zinc-800"><Trash2 className="w-3.5 h-3.5" /></button>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+    <div className="flex items-center gap-2 text-xs text-[#9AA6A0]">
+      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+      Las proyecciones no modifican movimientos, presupuestos, tarjetas, cuotas ni suscripciones existentes.
+    </div>
   </section>;
 };
