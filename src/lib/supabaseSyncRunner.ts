@@ -1,9 +1,12 @@
 import { supabase } from './supabase';
 import {
   deleteCategoryFromSupabase,
+  deletePatrimonyItemFromSupabase,
   deleteTransactionFromSupabase,
   syncBudgetToSupabase,
   syncCategoryToSupabase,
+  syncNetWorthSnapshotToSupabase,
+  syncPatrimonyItemToSupabase,
   syncSettingsToSupabase,
   syncTransactionToSupabase,
 } from './supabaseWrite';
@@ -40,10 +43,19 @@ export async function flushPendingSupabaseSync() {
           await deleteCategoryFromSupabase(operation.payload.id, false, false);
           break;
         case 'upsert_budget':
-          await syncBudgetToSupabase(operation.payload, false);
+          await syncBudgetToSupabase(operation.payload, false, false);
           break;
         case 'upsert_settings':
           await syncSettingsToSupabase(operation.payload, false, false);
+          break;
+        case 'upsert_patrimony':
+          await syncPatrimonyItemToSupabase(operation.payload, false, false);
+          break;
+        case 'delete_patrimony':
+          await deletePatrimonyItemFromSupabase(operation.payload.id, false, false);
+          break;
+        case 'upsert_net_worth_snapshot':
+          await syncNetWorthSnapshotToSupabase(operation.payload, false, false);
           break;
       }
       removePendingSupabaseSync(operation.id);
