@@ -1,4 +1,4 @@
-import { AppSettings, Category, MonthlyBudget, Transaction } from '../types';
+import { AppSettings, Category, MonthlyBudget, NetWorthSnapshot, PatrimonyItem, Transaction } from '../types';
 import { supabase } from './supabase';
 
 const QUEUE_KEY = 'mis_gastos_supabase_sync_queue_v1';
@@ -9,7 +9,10 @@ export type PendingOperation =
   | { id: string; type: 'upsert_category'; payload: Category }
   | { id: string; type: 'delete_category'; payload: { id: string } }
   | { id: string; type: 'upsert_budget'; payload: MonthlyBudget }
-  | { id: string; type: 'upsert_settings'; payload: AppSettings };
+  | { id: string; type: 'upsert_settings'; payload: AppSettings }
+  | { id: string; type: 'upsert_patrimony'; payload: PatrimonyItem }
+  | { id: string; type: 'delete_patrimony'; payload: { id: string } }
+  | { id: string; type: 'upsert_net_worth_snapshot'; payload: NetWorthSnapshot };
 
 type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
 export type PendingOperationInput = DistributiveOmit<PendingOperation, 'id'>;
@@ -40,6 +43,7 @@ export function enqueuePendingSupabaseSync(operation: PendingOperationInput): st
       break;
     case 'delete_transaction':
     case 'delete_category':
+    case 'delete_patrimony':
       key = operation.payload.id;
       break;
     case 'upsert_budget':
@@ -47,6 +51,12 @@ export function enqueuePendingSupabaseSync(operation: PendingOperationInput): st
       break;
     case 'upsert_settings':
       key = 'settings';
+      break;
+    case 'upsert_patrimony':
+      key = operation.payload.id;
+      break;
+    case 'upsert_net_worth_snapshot':
+      key = `${operation.payload.snapshotDate}:${operation.payload.id}`;
       break;
   }
   const id = operationId(operation.type, key);
