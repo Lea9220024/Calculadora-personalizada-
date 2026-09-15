@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="12dp"
+    android:padding="10dp"
     android:background="#171B26">
 
     <TextView
@@ -16,33 +16,36 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:orientation="horizontal">
 
-        <Button
+        <TextView
             android:id="@+id/cream_expense_button"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="48dp"
             android:layout_weight="1"
+            android:gravity="center"
+            android:background="#2A303D"
             android:text="＋ Gasto"
-            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
             android:textStyle="bold"
-            android:textColor="#FFFFFF" />
+            android:textSize="14sp" />
 
         <Space
             android:layout_width="8dp"
             android:layout_height="1dp" />
 
-        <Button
+        <TextView
             android:id="@+id/cream_income_button"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="48dp"
             android:layout_weight="1"
+            android:gravity="center"
+            android:background="#2A303D"
             android:text="＋ Ingreso"
-            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
             android:textStyle="bold"
-            android:textColor="#FFFFFF" />
+            android:textSize="14sp" />
     </LinearLayout>
 </LinearLayout>
