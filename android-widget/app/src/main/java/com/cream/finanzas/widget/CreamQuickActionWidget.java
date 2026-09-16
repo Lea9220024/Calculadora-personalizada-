@@ -5,12 +5,9 @@ import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
 import android.widget.RemoteViews;
 
 public class CreamQuickActionWidget extends AppWidgetProvider {
-    private static final String CREAM_URL = "https://calculadora-personalizada.onrender.com/?quickAction=";
-
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] appWidgetIds) {
         for (int widgetId : appWidgetIds) {
@@ -22,7 +19,8 @@ public class CreamQuickActionWidget extends AppWidgetProvider {
     }
 
     private PendingIntent createOpenIntent(Context context, String action, int requestCode) {
-        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(CREAM_URL + action));
+        Intent intent = new Intent(context, MainActivity.class);
+        intent.putExtra("quickAction", action);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         return PendingIntent.getActivity(
                 context,
