@@ -10,8 +10,9 @@ import android.webkit.WebViewClient;
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.FragmentActivity;
 
-public class MainActivity extends Activity {
+public class MainActivity extends FragmentActivity {
     private static final String CREAM_URL = "https://calculadora-personalizada.onrender.com/";
     private WebView webView;
     private boolean authenticated = false;
