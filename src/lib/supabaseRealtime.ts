@@ -9,34 +9,19 @@ const CALCULATOR_TABLES = [
   'calculator_categories',
   'calculator_monthly_budgets',
   'calculator_settings',
+  'calculator_cards',
+  'calculator_installment_plans',
+  'calculator_assets',
+  'calculator_net_worth_snapshots',
 ] as const;
 
-export function subscribeToCalculatorRealtime(
-  userId: string,
-  onChange: RealtimeHandler,
-  onStatusChange?: (status: string) => void,
-): RealtimeChannel | null {
+export function subscribeToCalculatorRealtime(userId: string, onChange: RealtimeHandler, onStatusChange?: (status: string) => void): RealtimeChannel | null {
   if (!supabase) return null;
-
   const channel = supabase.channel(`calculator-sync-${userId}`);
-
   for (const table of CALCULATOR_TABLES) {
-    channel.on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table,
-        filter: `user_id=eq.${userId}`,
-      },
-      onChange,
-    );
+    channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `user_id=eq.${userId}` }, onChange);
   }
-
-  channel.subscribe((status) => {
-    onStatusChange?.(status);
-  });
-
+  channel.subscribe((status) => onStatusChange?.(status));
   return channel;
 }
 
