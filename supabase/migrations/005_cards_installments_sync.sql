@@ -1,3 +1,4 @@
+-- C.R.E.A.M. cards, installment plans and transaction card metadata
 create table if not exists public.calculator_cards (
   id text primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -37,7 +38,7 @@ create index if not exists calculator_installment_plans_card_id_idx on public.ca
 alter table public.calculator_installment_plans enable row level security;
 create policy calculator_installment_plans_select_own on public.calculator_installment_plans for select using (auth.uid() = user_id);
 create policy calculator_installment_plans_insert_own on public.calculator_installment_plans for insert with check (auth.uid() = user_id);
-create policy calculator_installment_plans_update_own on public.calculator_installment_plans for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy calculator_installment_plans_update_own on public.calculator_installment_plans for update using (id = id) with check (auth.uid() = user_id);
 create policy calculator_installment_plans_delete_own on public.calculator_installment_plans for delete using (auth.uid() = user_id);
 
 alter table public.calculator_transactions add column if not exists card_id text;
