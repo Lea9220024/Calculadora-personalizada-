@@ -27,12 +27,14 @@ export async function syncInstallmentPlanToSupabase(plan: InstallmentPlan) {
   if (error) throw new Error(`Plan de cuotas: ${error.message}`);
 }
 
-// Dashboard income detail: preserve the existing dashboard card and open a detail overlay on click.
+// Dashboard income detail: the clicked card carries the active month in its label.
 if (typeof window !== 'undefined') {
   const formatMoney = (n: number) => new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 }).format(n);
-  const monthKey = () => new Date().toISOString().slice(0, 7);
-  const openIncomeDetails = () => {
-    const key = monthKey();
+  const MONTHS_ES: Record<string, string> = {
+    Enero: '01', Febrero: '02', Marzo: '03', Abril: '04', Mayo: '05', Junio: '06',
+    Julio: '07', Agosto: '08', Septiembre: '09', Octubre: '10', Noviembre: '11', Diciembre: '12'
+  };
+  const openIncomeDetails = (key: string) => {
     let transactions: any[] = [];
     let categories: any[] = [];
     try { transactions = JSON.parse(localStorage.getItem('mis_gastos_transactions_v1') || '[]'); } catch {}
@@ -53,9 +55,12 @@ if (typeof window !== 'undefined') {
     const target = event.target as HTMLElement | null;
     const clickable = target?.closest('div.cursor-pointer');
     if (!clickable || clickable.id === 'cream-income-detail-overlay') return;
-    if (clickable.textContent?.includes('Ingresos Mes') || clickable.textContent?.includes('Ingresos totales')) {
-      event.stopPropagation();
-      openIncomeDetails();
-    }
+    const label = clickable.textContent || '';
+    const match = label.match(/Ingresos Mes \((Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre) (\d{4})\)/);
+    if (!match) return;
+    const month = MONTHS_ES[match[1]];
+    if (!month) return;
+    event.stopPropagation();
+    openIncomeDetails(`${match[2]}-${month}`);
   }, true);
 }
