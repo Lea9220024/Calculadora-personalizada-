@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { LogIn, LogOut, Cloud, ShieldCheck, X, AlertTriangle } from 'lucide-react';
 import { supabase, supabaseUrl, supabasePublishableKey } from '../lib/supabase';
 import { migrateLocalDataToSupabase } from '../lib/supabaseMigration';
-import { getLastSupabaseSyncError, LastSupabaseSyncError } from '../lib/supabaseWrite';
+import { clearLastSupabaseSyncError, getLastSupabaseSyncError, LastSupabaseSyncError } from '../lib/supabaseWrite';
 import { AppSettings, Category, MonthlyBudget, Transaction } from '../types';
 
 type Props = { isOpen: boolean; onClose: () => void; transactions: Transaction[]; categories: Category[]; budgets: MonthlyBudget[]; settings: AppSettings; };
@@ -60,14 +60,17 @@ export const SupabaseSyncModal: React.FC<Props> = ({ isOpen, onClose, transactio
   const handleAuth = async () => {
     if (!supabase) { setError('Supabase todavía no está configurado en este entorno.'); return; }
     setLoading(true); setError(''); setMessage('');
+    // El panel no debe mostrar como "último error" un fallo histórico anterior al nuevo login.
+    // Si el login/sincronización actual genera un error, supabaseWrite lo volverá a registrar.
+    clearLastSupabaseSyncError();
+    setLastSyncError(null);
     try {
       const connection = await checkSupabaseConnection();
       if (!connection.ok) throw new Error(`Diagnóstico de conexión: ${connection.detail}`);
       const { data, error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (authError) throw authError;
       setUserId(data.user?.id ?? null);
-      setLastSyncError(getLastSupabaseSyncError());
-      setMessage('Sesión iniciada correctamente.');
+      setMessage('Sesión iniciada correctamente. Verificando sincronización…');
     } catch (e) {
       console.error('Supabase Auth error:', e);
       setError(formatAuthError(e));
