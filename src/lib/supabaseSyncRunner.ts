@@ -51,9 +51,27 @@ export async function flushPendingSupabaseSync() {
         case 'delete_transaction':
           await deleteTransactionFromSupabase(operation.payload.id, false, false);
           break;
-        case 'upsert_category':
-          await syncCategoryToSupabase(operation.payload, false, false);
+        case 'upsert_category': {
+          // If the category already belongs to this user, the queued write is stale.
+          const existingCategory = await supabase.from('calculator_categories').select('id').eq('id', operation.payload.id).eq('user_id', session.user.id).maybeSingle();
+          if (existingCategory.error) throw new Error(`Validación de categoría: ${existingCategory.error.message}`);
+          if (existingCategory.data) {
+            removePendingSupabaseSync(operation.id);
+            break;
+          }
+          try {
+            await syncCategoryToSupabase(operation.payload, false, false);
+          } catch (error) {
+            // Category IDs are currently globally unique in the legacy schema. If the
+            // same ID belongs to another user, do not turn that into a login-time error.
+            if ((error as { message?: string; code?: string })?.code === '23505' || String((error as Error)?.message || '').includes('duplicate key')) {
+              console.warn('Categoría pendiente bloqueada por ID global en uso. Se conserva localmente hasta la migración de categorías.', operation.payload.id);
+              continue;
+            }
+            throw error;
+          }
           break;
+        }
         case 'delete_category':
           await deleteCategoryFromSupabase(operation.payload.id, false, false);
           break;
